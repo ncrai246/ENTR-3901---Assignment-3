@@ -93,7 +93,7 @@ st.markdown("""
         background-position: center 20%;
     }
     .hero-content {
-        max-width: 680px;
+        max-width: 760px;
         z-index: 2;
     }
     .hero-eyebrow {
@@ -133,8 +133,8 @@ st.markdown("""
     }
     .hero-plot {
         color: #C2D6EA;
-        font-size: 0.96rem;
-        line-height: 1.5;
+        font-size: 0.98rem;
+        line-height: 1.55;
         margin-bottom: 8px;
         text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
     }
@@ -167,18 +167,17 @@ st.markdown("""
         margin-bottom: 6px;
     }
     .card-title {
-        font-size: 1.02rem;
+        font-size: 0.98rem;
         font-weight: 700;
         color: #FFFFFF;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        margin-bottom: 2px;
+        line-height: 1.25;
+        min-height: 2.5rem;
+        margin-bottom: 4px;
     }
     .card-sub {
         font-size: 0.8rem;
         color: #8BA3C7;
-        margin-bottom: 8px;
+        margin-bottom: 10px;
     }
     .section-header {
         font-size: 1.35rem;
@@ -195,6 +194,14 @@ st.markdown("""
         color: #F0F6FC;
         margin-bottom: 6px;
     }
+    .detail-box {
+        background: rgba(11, 23, 42, 0.9);
+        border: 1px solid rgba(0, 168, 232, 0.3);
+        border-radius: 12px;
+        padding: 20px;
+        margin-top: 12px;
+        margin-bottom: 16px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -210,6 +217,9 @@ if "watchlist" not in st.session_state:
 
 if "active_movie_id" not in st.session_state:
     st.session_state.active_movie_id = 603  # Defaults to The Matrix (1999)
+
+if "detail_movie" not in st.session_state:
+    st.session_state.detail_movie = None
 
 # ==========================================
 # 2. DATA RETRIEVAL & CACHING FUNCTIONS
@@ -241,12 +251,12 @@ def fetch_movie_details(movie_id):
             break
 
     genres = [g["name"] for g in d.get("genres", [])]
-    keywords = [k["name"] for k in d.get("keywords", {}).get("keywords", [])[:8]]
-    cast = [c["name"] for c in d.get("credits", {}).get("cast", [])[:5]]
+    keywords = [k["name"] for k in d.get("keywords", {}).get("keywords", [])[:10]]
+    cast = [c["name"] for c in d.get("credits", {}).get("cast", [])[:6]]
     crew = d.get("credits", {}).get("crew", [])
     directors = [c["name"] for c in crew if c.get("job") == "Director"]
 
-    plot = d.get("overview") or ""
+    plot = d.get("overview") or "No plot synopsis available."
     release_date = d.get("release_date") or ""
     year = int(release_date[:4]) if len(release_date) >= 4 and release_date[:4].isdigit() else 0
 
@@ -273,20 +283,24 @@ def fetch_movie_details(movie_id):
     poster_url = f"https://image.tmdb.org/t/p/w500{poster_path}" if poster_path else "https://via.placeholder.com/500x750/0B172A/00A8E8?text=No+Poster"
     backdrop_url = f"https://image.tmdb.org/t/p/original{backdrop_path}" if backdrop_path else poster_url
 
+    title_clean = d.get("title", "Unknown Title").strip()
+
     return {
         "id": d.get("id"),
-        "title": d.get("title", "Unknown Title"),
+        "title": title_clean,
+        "norm_title": title_clean.lower(),
         "year": year,
         "decade": f"{(year // 10) * 10}s" if year > 0 else "Unknown",
         "runtime": d.get("runtime") or 0,
         "certification": certification,
         "language": (d.get("original_language") or "en").upper(),
         "genres": genres,
-        "genres_str": ", ".join(genres),
+        "genres_str": ", ".join(genres) if genres else "Unspecified",
         "plot": plot,
         "keywords": keywords,
+        "keywords_str": ", ".join(keywords) if keywords else "None listed",
         "cast": cast,
-        "cast_str": ", ".join(cast),
+        "cast_str": ", ".join(cast) if cast else "Unspecified",
         "directors": directors,
         "director_str": ", ".join(directors) if directors else "Unknown",
         "rating": round(d.get("vote_average") or 0.0, 1),
@@ -303,7 +317,7 @@ def fetch_movie_details(movie_id):
 
 @st.cache_data(show_spinner=False, ttl=3600)
 def build_candidate_pool(seed_movie_id=None):
-    """Builds a rich pool of candidate movies from Popular, Top Rated, Trending, and Similar endpoints."""
+    """Builds a rich, deduplicated pool of candidate movies from TMDB endpoints."""
     movie_ids = []
     if seed_movie_id:
         movie_ids.append(seed_movie_id)
@@ -326,21 +340,27 @@ def build_candidate_pool(seed_movie_id=None):
                 movie_ids.append(m["id"])
 
     records = []
-    for m_id in movie_ids[:50]:
+    for m_id in movie_ids[:55]:
         details = fetch_movie_details(m_id)
         if details and details["year"] > 0:
             records.append(details)
 
-    return pd.DataFrame(records)
+    df = pd.DataFrame(records)
+    if not df.empty:
+        # Sort by popularity & votes so the main theatrical version is kept and knockoffs are dropped
+        df = df.sort_values(by=["popularity", "votes"], ascending=False)
+        df = df.drop_duplicates(subset=["norm_title"], keep="first").reset_index(drop=True)
+    return df
 
 @st.cache_data(show_spinner=False, ttl=3600)
 def search_tmdb_movie(query):
-    """Searches TMDB by movie title."""
+    """Searches TMDB by movie title and sorts by popularity to prioritize major releases."""
     url = "https://api.themoviedb.org/3/search/movie"
     res = requests.get(url, params={"api_key": API_KEY, "query": query}).json()
-    return res.get("results", [])
+    results = res.get("results", [])
+    results.sort(key=lambda x: (x.get("popularity") or 0, x.get("vote_count") or 0), reverse=True)
+    return results
 
-# Known popular titles for instant fuzzy typo recovery
 KNOWN_TITLES = [
     "The Matrix", "The Matrix Reloaded", "The Odyssey", "2001: A Space Odyssey",
     "Inception", "Interstellar", "Dune", "Dune: Part Two", "Blade Runner 2049",
@@ -352,26 +372,34 @@ KNOWN_TITLES = [
 ]
 
 def live_google_style_autocomplete(searchterm: str):
-    """Callback function for st_searchbox that triggers on every keystroke."""
-    if not searchterm or len(searchterm.strip()) < 2:
+    """Callback for st_searchbox that cleans formatting, ranks by popularity, and removes duplicate titles."""
+    if not searchterm:
         return []
 
-    clean_q = searchterm.strip()
-    options = []
-    seen_ids = set()
+    # Strip any formatted suffix like '(2026) | ★ 8.0' if user clicks back into box
+    clean_q = searchterm.split("|")[0].split("(")[0].strip()
+    if len(clean_q) < 2:
+        return []
 
-    # 1. Direct live search on TMDB as user types
+    options = []
+    seen_title_years = set()
+
+    # 1. Direct live search on TMDB sorted by popularity
     results = search_tmdb_movie(clean_q)
-    for m in results[:8]:
+    for m in results[:12]:
         m_id = m.get("id")
-        title = m.get("title")
+        title = (m.get("title") or "").strip()
         rel = (m.get("release_date") or "")[:4]
         year_str = rel if rel else "TBA"
         rating = round(m.get("vote_average") or 0.0, 1)
-        if m_id and title and m_id not in seen_ids:
+        votes = m.get("vote_count") or 0
+
+        # Skip obscure zero-vote duplicate entries if we already have the main release for that title & year
+        dedup_key = (title.lower(), year_str)
+        if m_id and title and dedup_key not in seen_title_years:
             label = f"{title} ({year_str}) | ★ {rating}"
             options.append((label, m_id))
-            seen_ids.add(m_id)
+            seen_title_years.add(dedup_key)
 
     # 2. Fuzzy typo recovery if user misspelled the title
     if len(options) < 3:
@@ -380,25 +408,28 @@ def live_google_style_autocomplete(searchterm: str):
             fuzzy_res = search_tmdb_movie(match_title)
             for m in fuzzy_res[:4]:
                 m_id = m.get("id")
-                title = m.get("title")
+                title = (m.get("title") or "").strip()
                 rel = (m.get("release_date") or "")[:4]
                 year_str = rel if rel else "TBA"
                 rating = round(m.get("vote_average") or 0.0, 1)
-                if m_id and title and m_id not in seen_ids:
-                    label = f"{title} ({year_str}) | ★ {rating} (Suggested Match)"
+                dedup_key = (title.lower(), year_str)
+                if m_id and title and dedup_key not in seen_title_years:
+                    label = f"{title} ({year_str}) | ★ {rating} (Suggested)"
                     options.append((label, m_id))
-                    seen_ids.add(m_id)
+                    seen_title_years.add(dedup_key)
 
-    return options
+    return options[:8]
 
 # ==========================================
 # 3. CORE FILTERING & EXPLANATION FUNCTIONS
 # ==========================================
-def apply_core_filters(df, year_range, min_rating, min_votes, runtime_range, certs, lang, personnel_query, selected_genres, genre_op, exclude_id=None):
-    """Applies all 5 required core filtering capabilities from the assignment rubric."""
+def apply_core_filters(df, year_range, min_rating, min_votes, runtime_range, certs, lang, personnel_query, selected_genres, genre_op, exclude_id=None, exclude_title=None):
+    """Applies all 5 required core filtering capabilities and removes same-title duplicates."""
     filtered = df.copy()
     if exclude_id is not None:
         filtered = filtered[filtered["id"] != exclude_id]
+    if exclude_title:
+        filtered = filtered[filtered["norm_title"] != exclude_title.strip().lower()]
 
     filtered = filtered[(filtered["year"] >= year_range[0]) & (filtered["year"] <= year_range[1])]
     filtered = filtered[(filtered["rating"] >= min_rating) & (filtered["votes"] >= min_votes)]
@@ -431,28 +462,102 @@ def build_similarity_explanation(reference_info, candidate_row):
     cand_genres = set(candidate_row.get("genres", []))
     shared_genres = ref_genres.intersection(cand_genres)
     if shared_genres:
-        reasons.append(f"Genres: {', '.join(shared_genres)}")
+        reasons.append(f"Shared Genres: {', '.join(shared_genres)}")
 
     ref_cast = set(reference_info.get("cast", []))
     cand_cast = set(candidate_row.get("cast", []))
     shared_cast = ref_cast.intersection(cand_cast)
     if shared_cast:
-        reasons.append(f"Cast: {', '.join(shared_cast)}")
+        reasons.append(f"Shared Cast: {', '.join(shared_cast)}")
 
     ref_kw = set(reference_info.get("keywords", []))
     cand_kw = set(candidate_row.get("keywords", []))
     shared_kw = ref_kw.intersection(cand_kw)
     if shared_kw:
-        reasons.append(f"Themes: {', '.join(list(shared_kw)[:3])}")
+        reasons.append(f"Matching Themes: {', '.join(list(shared_kw)[:4])}")
 
     pol_diff = abs(reference_info.get("polarity", 0) - candidate_row.get("polarity", 0))
     if pol_diff < 0.15:
-        reasons.append("Similar plot mood & tone")
+        reasons.append("Highly similar narrative mood & emotional tone")
 
     if not reasons:
-        reasons.append("High TF-IDF plot vocabulary alignment & audience score")
+        reasons.append("Strong TF-IDF plot vocabulary alignment & high audience quality score")
 
     return " | ".join(reasons)
+
+def render_full_movie_page(m_data):
+    """Renders a dedicated Full-Page Movie Detail View when any movie title is clicked."""
+    top_b1, top_b2, top_b3 = st.columns([1.2, 1.5, 1.3])
+    with top_b1:
+        if st.button("⬅️ Back to Discovery Stream", type="primary", use_container_width=True):
+            st.session_state.detail_movie = None
+            st.rerun()
+    with top_b2:
+        if st.button("🎯 Find Movies Similar to This Title", use_container_width=True):
+            st.session_state.active_movie_id = m_data["id"]
+            st.session_state.detail_movie = None
+            st.rerun()
+    with top_b3:
+        if st.button("➕ Add Title to My List", use_container_width=True):
+            if m_data["id"] not in [w["id"] for w in st.session_state.watchlist]:
+                st.session_state.watchlist.append(m_data)
+                st.toast(f"Added {m_data['title']} to My List!")
+
+    # Widescreen Backdrop Header
+    st.markdown(f"""
+    <div class="hero-banner" style="background-image: linear-gradient(90deg, #050A14 12%, rgba(5, 10, 20, 0.85) 55%, rgba(5, 10, 20, 0.3) 100%), url('{m_data['backdrop_url']}');">
+        <div class="hero-content">
+            <div class="hero-eyebrow">FULL MOVIE SPOTLIGHT &bull; COMPLETE METADATA VIEW</div>
+            <div class="hero-title">{m_data['title']} ({m_data['year']})</div>
+            <div class="hero-meta">
+                <span class="meta-badge">★ {m_data['rating']}/10 TMDB ({m_data['votes']:,} votes)</span>
+                <span class="meta-badge">{m_data['certification']}</span>
+                <span class="meta-badge">{m_data['language']}</span>
+                <span>{m_data['runtime']} MINS</span>
+                <span>&bull;</span>
+                <span>{m_data['genres_str']}</span>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Full Uncut Details Layout
+    d_col1, d_col2 = st.columns([1, 2.6])
+    with d_col1:
+        st.image(m_data["poster_url"], use_container_width=True)
+
+    with d_col2:
+        st.markdown("### 📖 Complete Plot Synopsis")
+        st.write(m_data["plot"])
+
+        if "explanation" in m_data:
+            st.markdown(f"""
+            <div class="detail-box">
+                <div style="color:#00A8E8; font-weight:800; font-size:0.9rem; letter-spacing:1px; margin-bottom:6px;">
+                    🤖 AI RECOMMENDATION BREAKDOWN ({m_data.get('match_pct', 85)}% STREAM MATCH)
+                </div>
+                <div style="font-size:0.98rem; color:#F0F6FC; margin-bottom:8px;">
+                    <b>Why It Matches Your Search:</b> {m_data['explanation']}
+                </div>
+                <div style="font-size:0.88rem; color:#8AB4F8;">
+                    Content TF-IDF Score: <code>{m_data.get('content_score', 0):.2f}</code> &nbsp;|&nbsp;
+                    NLP Sentiment Alignment: <code>{m_data.get('sentiment_score', 0):.2f}</code> &nbsp;|&nbsp;
+                    Plot Polarity: <code>{m_data.get('polarity', 0)}</code> &nbsp;|&nbsp;
+                    Plot Subjectivity: <code>{m_data.get('subjectivity', 0)}</code>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown("### 🎬 Production, Cast & Box Office Metadata")
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Director", m_data["director_str"])
+        m2.metric("Box Office Revenue", f"${m_data['revenue']:,}" if m_data["revenue"] > 0 else "Unreported")
+        m3.metric("Production Budget", f"${m_data['budget']:,}" if m_data["budget"] > 0 else "Unreported")
+
+        st.markdown(f"**🎭 Top billed Cast:** {m_data['cast_str']}")
+        st.markdown(f"**🏷️ Genres:** {m_data['genres_str']}")
+        st.markdown(f"**🔑 TMDB Plot Keywords & Themes:** {m_data.get('keywords_str', 'None listed')}")
+        st.markdown(f"**⏱️ Runtime:** {m_data['runtime']} minutes &nbsp;|&nbsp; **🔞 US Certification:** {m_data['certification']} &nbsp;|&nbsp; **🌐 Original Language:** {m_data['language']}")
 
 # ==========================================
 # 4. CRAVE TOP NAVIGATION BAR & TABS
@@ -481,170 +586,176 @@ df_base_catalog = build_candidate_pool(seed_movie_id=None)
 # TAB 1: CRAVE HOME & AI DISCOVERY STREAM
 # ==========================================
 with tab_home:
-    s_col1, s_col2 = st.columns([1, 2.5])
-    with s_col1:
-        search_mode = st.selectbox(
-            "Discovery Mode",
-            ["Search by Movie Title", "Describe a Plot or Vibe (NLP Query)"]
-        )
+    # If the user clicked a movie title at the bottom, show its Full-Page Movie Detail View
+    if st.session_state.detail_movie is not None:
+        render_full_movie_page(st.session_state.detail_movie)
+    else:
+        s_col1, s_col2 = st.columns([1, 2.5])
+        with s_col1:
+            search_mode = st.selectbox(
+                "Discovery Mode",
+                ["Search by Movie Title", "Describe a Plot or Vibe (NLP Query)"]
+            )
 
-    user_nlp_query = ""
-    with s_col2:
-        if search_mode == "Search by Movie Title":
-            if HAS_SEARCHBOX:
-                st.markdown('<div class="search-label">Search Movies (Live Auto-Complete Dropdown)</div>', unsafe_allow_html=True)
-                picked_result = st_searchbox(
-                    live_google_style_autocomplete,
-                    placeholder="Start typing any movie title (e.g., The Matrix, Odyssey, Dune)...",
-                    key="crave_live_searchbox"
-                )
-                if picked_result is not None:
-                    if isinstance(picked_result, tuple):
-                        st.session_state.active_movie_id = picked_result[1]
-                    elif isinstance(picked_result, int):
-                        st.session_state.active_movie_id = picked_result
+        user_nlp_query = ""
+        with s_col2:
+            if search_mode == "Search by Movie Title":
+                if HAS_SEARCHBOX:
+                    st.markdown('<div class="search-label">Search Movies (Live Auto-Complete Dropdown)</div>', unsafe_allow_html=True)
+                    picked_result = st_searchbox(
+                        live_google_style_autocomplete,
+                        placeholder="Start typing any movie title (e.g., The Matrix, The Odyssey, Dune)...",
+                        key="crave_live_searchbox"
+                    )
+                    if picked_result is not None:
+                        if isinstance(picked_result, tuple):
+                            st.session_state.active_movie_id = picked_result[1]
+                        elif isinstance(picked_result, int):
+                            st.session_state.active_movie_id = picked_result
+                else:
+                    fallback_q = st.text_input("Search Movies", value="The Matrix")
+                    res = search_tmdb_movie(fallback_q)
+                    if res:
+                        st.session_state.active_movie_id = res[0]["id"]
             else:
-                fallback_q = st.text_input("Search Movies", value="The Matrix")
-                res = search_tmdb_movie(fallback_q)
-                if res:
-                    st.session_state.active_movie_id = res[0]["id"]
-        else:
-            user_nlp_query = st.text_input(
-                "Describe Vibe, Plot, or Themes",
-                value="A futuristic cyberpunk hacker discovers reality is a simulation",
-                placeholder="Describe any mood, plot, or theme..."
-            )
+                user_nlp_query = st.text_input(
+                    "Describe Vibe, Plot, or Themes",
+                    value="A futuristic cyberpunk hacker discovers reality is a simulation",
+                    placeholder="Describe any mood, plot, or theme..."
+                )
 
-    with st.expander("🎛️ Refine Stream: Filters & AI Algorithm Settings (Year, Rating, Runtime, Cast, Genres)", expanded=False):
-        f_col1, f_col2, f_col3 = st.columns(3)
-        with f_col1:
-            st.markdown("**AI Engine & Temporal Filter**")
-            rec_approach = st.selectbox(
-                "Recommendation Algorithm",
-                [
-                    "Hybrid (Content + NLP Sentiment + Quality)",
-                    "Content-Based Filtering (TF-IDF Attributes)",
-                    "Sentiment-Based NLP Matching (Plot Tone)"
-                ]
-            )
-            year_range = st.slider("Release Year Range", 1970, 2026, (1990, 2026))
-            runtime_range = st.slider("Runtime Bracket (mins)", 40, 240, (60, 220))
+        with st.expander("🎛️ Refine Stream: Filters & AI Algorithm Settings (Year, Rating, Runtime, Cast, Genres)", expanded=False):
+            f_col1, f_col2, f_col3 = st.columns(3)
+            with f_col1:
+                st.markdown("**AI Engine & Temporal Filter**")
+                rec_approach = st.selectbox(
+                    "Recommendation Algorithm",
+                    [
+                        "Hybrid (Content + NLP Sentiment + Quality)",
+                        "Content-Based Filtering (TF-IDF Attributes)",
+                        "Sentiment-Based NLP Matching (Plot Tone)"
+                    ]
+                )
+                year_range = st.slider("Release Year Range", 1970, 2026, (1990, 2026))
+                runtime_range = st.slider("Runtime Bracket (mins)", 40, 240, (60, 220))
 
-        with f_col2:
-            st.markdown("**Quality & Content Specifications**")
-            min_rating = st.slider("Minimum TMDB Rating", 0.0, 10.0, 6.0, 0.5)
-            min_votes = st.number_input("Minimum Vote Count", min_value=0, max_value=10000, value=50, step=50)
-            all_certs = ["G", "PG", "PG-13", "R", "NR"]
-            selected_certs = st.multiselect("US Certification", all_certs, default=all_certs)
-            selected_lang = st.selectbox("Original Language", ["ALL", "EN", "FR", "ES", "JA", "KO"])
+            with f_col2:
+                st.markdown("**Quality & Content Specifications**")
+                min_rating = st.slider("Minimum TMDB Rating", 0.0, 10.0, 6.0, 0.5)
+                min_votes = st.number_input("Minimum Vote Count", min_value=0, max_value=10000, value=50, step=50)
+                all_certs = ["G", "PG", "PG-13", "R", "NR"]
+                selected_certs = st.multiselect("US Certification", all_certs, default=all_certs)
+                selected_lang = st.selectbox("Original Language", ["ALL", "EN", "FR", "ES", "JA", "KO"])
 
-        with f_col3:
-            st.markdown("**Personnel & Genre Combinations**")
-            personnel_query = st.text_input("Actor or Director Preference", placeholder="e.g., Keanu Reeves, Christopher Nolan")
-            genre_options = ["Action", "Adventure", "Animation", "Comedy", "Crime", "Drama", "Family", "Fantasy", "Horror", "Mystery", "Romance", "Science Fiction", "Thriller"]
-            selected_genres = st.multiselect("Filter by Genres", genre_options)
-            genre_operator = st.radio("Genre Logic", ["Match ANY selected genre (OR)", "Match ALL selected genres (AND)"])
+            with f_col3:
+                st.markdown("**Personnel & Genre Combinations**")
+                personnel_query = st.text_input("Actor or Director Preference", placeholder="e.g., Keanu Reeves, Christopher Nolan")
+                genre_options = ["Action", "Adventure", "Animation", "Comedy", "Crime", "Drama", "Family", "Fantasy", "Horror", "Mystery", "Romance", "Science Fiction", "Thriller"]
+                selected_genres = st.multiselect("Filter by Genres", genre_options)
+                genre_operator = st.radio("Genre Logic", ["Match ANY selected genre (OR)", "Match ALL selected genres (AND)"])
 
-    with st.spinner("Curating your personalized stream..."):
-        seed_movie = None
-        if search_mode == "Search by Movie Title":
-            seed_movie = fetch_movie_details(st.session_state.active_movie_id)
-            df_pool = build_candidate_pool(seed_movie_id=st.session_state.active_movie_id)
-        else:
-            df_pool = df_base_catalog.copy()
+        with st.spinner("Curating your personalized stream..."):
+            seed_movie = None
+            if search_mode == "Search by Movie Title":
+                seed_movie = fetch_movie_details(st.session_state.active_movie_id)
+                df_pool = build_candidate_pool(seed_movie_id=st.session_state.active_movie_id)
+            else:
+                df_pool = df_base_catalog.copy()
 
-        vectorizer = TfidfVectorizer(stop_words="english")
-        tfidf_matrix = vectorizer.fit_transform(df_pool["combined_features"])
+            vectorizer = TfidfVectorizer(stop_words="english")
+            tfidf_matrix = vectorizer.fit_transform(df_pool["combined_features"])
 
-        if seed_movie is not None:
-            target_vec = vectorizer.transform([seed_movie["combined_features"]])
-            ref_polarity = seed_movie["polarity"]
-            ref_subjectivity = seed_movie["subjectivity"]
-            ref_info = seed_movie
-            exclude_id = seed_movie["id"]
-            hero_movie = seed_movie
-            eyebrow_text = f"FEATURED SELECTION &bull; SELECTED TITLE: {seed_movie['title'].upper()}"
-        else:
-            try:
-                q_blob = TextBlob(user_nlp_query)
-                ref_polarity = round(q_blob.sentiment.polarity, 3)
-                ref_subjectivity = round(q_blob.sentiment.subjectivity, 3)
-            except Exception:
-                ref_polarity = 0.0
-                ref_subjectivity = 0.5
-            target_vec = vectorizer.transform([user_nlp_query])
-            ref_info = {"genres": selected_genres, "cast": [], "keywords": user_nlp_query.lower().split(), "polarity": ref_polarity}
-            exclude_id = None
-            hero_movie = df_pool.iloc[0].to_dict()
-            eyebrow_text = f"NLP VIBE MATCH &bull; DETECTED POLARITY: {ref_polarity}"
+            if seed_movie is not None:
+                target_vec = vectorizer.transform([seed_movie["combined_features"]])
+                ref_polarity = seed_movie["polarity"]
+                ref_subjectivity = seed_movie["subjectivity"]
+                ref_info = seed_movie
+                exclude_id = seed_movie["id"]
+                exclude_title = seed_movie["title"]
+                hero_movie = seed_movie
+                eyebrow_text = f"FEATURED SELECTION &bull; SELECTED TITLE: {seed_movie['title'].upper()}"
+            else:
+                try:
+                    q_blob = TextBlob(user_nlp_query)
+                    ref_polarity = round(q_blob.sentiment.polarity, 3)
+                    ref_subjectivity = round(q_blob.sentiment.subjectivity, 3)
+                except Exception:
+                    ref_polarity = 0.0
+                    ref_subjectivity = 0.5
+                target_vec = vectorizer.transform([user_nlp_query])
+                ref_info = {"genres": selected_genres, "cast": [], "keywords": user_nlp_query.lower().split(), "polarity": ref_polarity}
+                exclude_id = None
+                exclude_title = None
+                hero_movie = df_pool.iloc[0].to_dict()
+                eyebrow_text = f"NLP VIBE MATCH &bull; DETECTED POLARITY: {ref_polarity}"
 
-        df_pool["content_score"] = cosine_similarity(target_vec, tfidf_matrix).flatten()
-        pol_diff = (df_pool["polarity"] - ref_polarity).abs()
-        sub_diff = (df_pool["subjectivity"] - ref_subjectivity).abs()
-        df_pool["sentiment_score"] = (1.0 - ((pol_diff + sub_diff) / 3.0)).clip(0, 1)
+            df_pool["content_score"] = cosine_similarity(target_vec, tfidf_matrix).flatten()
+            pol_diff = (df_pool["polarity"] - ref_polarity).abs()
+            sub_diff = (df_pool["subjectivity"] - ref_subjectivity).abs()
+            df_pool["sentiment_score"] = (1.0 - ((pol_diff + sub_diff) / 3.0)).clip(0, 1)
 
-        if rec_approach.startswith("Content-Based"):
-            df_pool["final_score"] = df_pool["content_score"]
-        elif rec_approach.startswith("Sentiment-Based"):
-            df_pool["final_score"] = (0.75 * df_pool["sentiment_score"]) + (0.25 * df_pool["content_score"])
-        else:
-            norm_rating = df_pool["rating"] / 10.0
-            df_pool["final_score"] = (0.55 * df_pool["content_score"]) + (0.25 * df_pool["sentiment_score"]) + (0.20 * norm_rating)
+            if rec_approach.startswith("Content-Based"):
+                df_pool["final_score"] = df_pool["content_score"]
+            elif rec_approach.startswith("Sentiment-Based"):
+                df_pool["final_score"] = (0.75 * df_pool["sentiment_score"]) + (0.25 * df_pool["content_score"])
+            else:
+                norm_rating = df_pool["rating"] / 10.0
+                df_pool["final_score"] = (0.55 * df_pool["content_score"]) + (0.25 * df_pool["sentiment_score"]) + (0.20 * norm_rating)
 
-        filtered_df = apply_core_filters(
-            df_pool, year_range, min_rating, min_votes, runtime_range,
-            selected_certs, selected_lang, personnel_query, selected_genres,
-            genre_operator, exclude_id=exclude_id
-        ).sort_values(by="final_score", ascending=False)
+            filtered_df = apply_core_filters(
+                df_pool, year_range, min_rating, min_votes, runtime_range,
+                selected_certs, selected_lang, personnel_query, selected_genres,
+                genre_operator, exclude_id=exclude_id, exclude_title=exclude_title
+            ).sort_values(by="final_score", ascending=False)
 
-        st.markdown(f"""
-        <div class="hero-banner" style="background-image: linear-gradient(90deg, #050A14 15%, rgba(5, 10, 20, 0.82) 55%, rgba(5, 10, 20, 0.25) 100%), url('{hero_movie['backdrop_url']}');">
-            <div class="hero-content">
-                <div class="hero-eyebrow">{eyebrow_text}</div>
-                <div class="hero-title">{hero_movie['title']} ({hero_movie['year']})</div>
-                <div class="hero-meta">
-                    <span class="meta-badge">★ {hero_movie['rating']} TMDB</span>
-                    <span class="meta-badge">{hero_movie['certification']}</span>
-                    <span>{hero_movie['runtime']} MINS</span>
-                    <span>&bull;</span>
-                    <span>{hero_movie['genres_str']}</span>
-                    <span>&bull;</span>
-                    <span>Dir: {hero_movie['director_str']}</span>
+            st.markdown(f"""
+            <div class="hero-banner" style="background-image: linear-gradient(90deg, #050A14 15%, rgba(5, 10, 20, 0.82) 55%, rgba(5, 10, 20, 0.25) 100%), url('{hero_movie['backdrop_url']}');">
+                <div class="hero-content">
+                    <div class="hero-eyebrow">{eyebrow_text}</div>
+                    <div class="hero-title">{hero_movie['title']} ({hero_movie['year']})</div>
+                    <div class="hero-meta">
+                        <span class="meta-badge">★ {hero_movie['rating']} TMDB</span>
+                        <span class="meta-badge">{hero_movie['certification']}</span>
+                        <span>{hero_movie['runtime']} MINS</span>
+                        <span>&bull;</span>
+                        <span>{hero_movie['genres_str']}</span>
+                        <span>&bull;</span>
+                        <span>Dir: {hero_movie['director_str']}</span>
+                    </div>
+                    <div class="hero-plot">{hero_movie['plot']}</div>
                 </div>
-                <div class="hero-plot">{hero_movie['plot']}</div>
             </div>
-        </div>
-        """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
 
-        st.markdown('<div class="section-header">Recommended For You</div>', unsafe_allow_html=True)
-        if filtered_df.empty:
-            st.warning("No titles matched all of your active filter settings. Open 'Refine Stream' above to widen your year, rating, or genre filters.")
-        else:
-            rec_cols = st.columns(5)
-            for idx, (_, row) in enumerate(filtered_df.head(10).iterrows()):
-                with rec_cols[idx % 5]:
-                    with st.container(border=True):
-                        st.image(row["poster_url"], use_container_width=True)
-                        match_pct = int(min(max(row["final_score"] * 100 + 35, 65), 99))
-                        st.markdown(f'<div class="match-pill">{match_pct}% STREAM MATCH</div>', unsafe_allow_html=True)
-                        st.markdown(f'<div class="card-title" title="{row["title"]}">{row["title"]}</div>', unsafe_allow_html=True)
-                        st.markdown(f'<div class="card-sub">{row["year"]} &bull; ★ {row["rating"]} &bull; {row["certification"]}</div>', unsafe_allow_html=True)
+            st.markdown('<div class="section-header">Recommended For You (Click Any Movie to Open Full Page)</div>', unsafe_allow_html=True)
+            if filtered_df.empty:
+                st.warning("No titles matched all of your active filter settings. Open 'Refine Stream' above to widen your year, rating, or genre filters.")
+            else:
+                rec_cols = st.columns(5)
+                for idx, (_, row) in enumerate(filtered_df.head(10).iterrows()):
+                    with rec_cols[idx % 5]:
+                        with st.container(border=True):
+                            st.image(row["poster_url"], use_container_width=True)
+                            match_pct = int(min(max(row["final_score"] * 100 + 35, 65), 99))
+                            st.markdown(f'<div class="match-pill">{match_pct}% STREAM MATCH</div>', unsafe_allow_html=True)
+                            st.markdown(f'<div class="card-title">{row["title"]}</div>', unsafe_allow_html=True)
+                            st.markdown(f'<div class="card-sub">{row["year"]} &bull; ★ {row["rating"]} &bull; {row["certification"]}</div>', unsafe_allow_html=True)
 
-                        with st.expander("ℹ️ Details & Match"):
                             explanation = build_similarity_explanation(ref_info, row)
-                            st.caption(f"💡 **Why It Matches:** {explanation}")
-                            st.caption(f"🎬 **Director:** {row['director_str']}")
-                            st.caption(f"🎭 **Cast:** {row['cast_str']}")
-                            st.caption(f"⏱️ **Runtime:** {row['runtime']}m | 🌐 **Lang:** {row['language']}")
-                            st.caption(f"💰 **Box Office:** ${row['revenue']:,} ({row['votes']:,} votes)")
-                            st.caption(f"📊 **Scores:** TF-IDF `{row['content_score']:.2f}` | NLP Tone `{row['sentiment_score']:.2f}`")
-                            st.write(row["plot"][:200] + "...")
 
-                        if st.button("➕ My List", key=f"rec_{row['id']}", use_container_width=True):
-                            if row["id"] not in [w["id"] for w in st.session_state.watchlist]:
-                                st.session_state.watchlist.append(row.to_dict())
-                                st.toast(f"Added {row['title']} to My List!")
+                            # Button to open the full-page view for this movie
+                            if st.button("📖 Open Full Page", key=f"open_{row['id']}", type="primary", use_container_width=True):
+                                m_dict = row.to_dict()
+                                m_dict["explanation"] = explanation
+                                m_dict["match_pct"] = match_pct
+                                st.session_state.detail_movie = m_dict
                                 st.rerun()
+
+                            if st.button("➕ My List", key=f"rec_{row['id']}", use_container_width=True):
+                                if row["id"] not in [w["id"] for w in st.session_state.watchlist]:
+                                    st.session_state.watchlist.append(row.to_dict())
+                                    st.toast(f"Added {row['title']} to My List!")
+                                    st.rerun()
 
 # ==========================================
 # TAB 2: TRENDING & MARKET ANALYTICS
@@ -661,6 +772,9 @@ with tab_trends:
                 st.markdown(f'<div class="match-pill">🔥 TRENDING #{idx + 1}</div>', unsafe_allow_html=True)
                 st.markdown(f'<div class="card-title">{m_row["title"]}</div>', unsafe_allow_html=True)
                 st.markdown(f'<div class="card-sub">{m_row["year"]} &bull; ★ {m_row["rating"]} &bull; {m_row["certification"]}</div>', unsafe_allow_html=True)
+                if st.button("📖 Open Full Page", key=f"tropen_{m_row['id']}", type="primary", use_container_width=True):
+                    st.session_state.detail_movie = m_row.to_dict()
+                    st.rerun()
                 if st.button("➕ My List", key=f"tr_{m_row['id']}", use_container_width=True):
                     if m_row["id"] not in [w["id"] for w in st.session_state.watchlist]:
                         st.session_state.watchlist.append(m_row.to_dict())
