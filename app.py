@@ -15,11 +15,12 @@ st.set_page_config(
     layout="wide"
 )
 
-# API Key setup with fallback for Streamlit Secrets
-try:
+# API Key setup using Streamlit Secrets
+if "TMDB_KEY" in st.secrets:
     API_KEY = st.secrets["TMDB_KEY"]
-except Exception:
-    API_KEY = "8dc93981f34a44f38dcfaba657942ba8"
+else:
+    st.error("API Key not found in Streamlit Secrets.")
+    st.stop()
 
 # Initialize session state for the User Watchlist (Enhanced Feature)
 if "watchlist" not in st.session_state:
