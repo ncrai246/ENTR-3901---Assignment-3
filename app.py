@@ -235,9 +235,13 @@ def fetch_movie_details(movie_id):
     year = int(release_date[:4]) if len(release_date) >= 4 and release_date[:4].isdigit() else 0
 
     # NLP Sentiment Analysis on Plot Description
-    blob = TextBlob(plot)
-    polarity = round(blob.sentiment.polarity, 3)
-    subjectivity = round(blob.sentiment.subjectivity, 3)
+    try:
+        blob = TextBlob(plot)
+        polarity = round(blob.sentiment.polarity, 3)
+        subjectivity = round(blob.sentiment.subjectivity, 3)
+    except Exception:
+        polarity = 0.0
+        subjectivity = 0.5
 
     # Combined text soup for TF-IDF feature extraction
     combined_features = (
@@ -408,7 +412,6 @@ tab_home, tab_trends, tab_compare, tab_watchlist = st.tabs([
 # TAB 1: CRAVE HOME & AI DISCOVERY STREAM
 # ==========================================
 with tab_home:
-    # Sleek Search Bar + Mode Selector
     s_col1, s_col2 = st.columns([1, 2.3])
     with s_col1:
         search_mode = st.selectbox(
@@ -421,6 +424,313 @@ with tab_home:
         else:
             user_input = st.text_input("Describe Vibe or Plot", value="A futuristic cyberpunk hacker discovers reality is a simulation", placeholder="Describe any mood, plot, or theme...")
 
-    # Sleek Collapsible Drawer for All 5 Rubric Filter Categories (No Sidebar Clutter!)
     with st.expander("🎛️ Refine Stream: Filters & AI Algorithm Settings (Year, Rating, Runtime, Cast, Genres)", expanded=False):
-        f_col1, f_col2
+        f_col1, f_col2, f_col3 = st.columns(3)
+        with f_col1:
+            st.markdown("**AI Engine & Temporal Filter**")
+            rec_approach = st.selectbox(
+                "Recommendation Algorithm",
+                [
+                    "Hybrid (Content + NLP Sentiment + Quality)",
+                    "Content-Based Filtering (TF-IDF Attributes)",
+                    "Sentiment-Based NLP Matching (Plot Tone)"
+                ]
+            )
+            year_range = st.slider("Release Year Range", 1970, 2026, (1990, 2026))
+            runtime_range = st.slider("Runtime Bracket (mins)", 40, 240, (60, 220))
+
+        with f_col2:
+            st.markdown("**Quality & Content Specifications**")
+            min_rating = st.slider("Minimum TMDB Rating", 0.0, 10.0, 6.0, 0.5)
+            min_votes = st.number_input("Minimum Vote Count", min_value=0, max_value=10000, value=50, step=50)
+            all_certs = ["G", "PG", "PG-13", "R", "NR"]
+            selected_certs = st.multiselect("US Certification", all_certs, default=all_certs)
+            selected_lang = st.selectbox("Original Language", ["ALL", "EN", "FR", "ES", "JA", "KO"])
+
+        with f_col3:
+            st.markdown("**Personnel & Genre Combinations**")
+            personnel_query = st.text_input("Actor or Director Preference", placeholder="e.g., Keanu Reeves, Christopher Nolan")
+            genre_options = ["Action", "Adventure", "Animation", "Comedy", "Crime", "Drama", "Family", "Fantasy", "Horror", "Mystery", "Romance", "Science Fiction", "Thriller"]
+            selected_genres = st.multiselect("Filter by Genres", genre_options)
+            genre_operator = st.radio("Genre Logic", ["Match ANY selected genre (OR)", "Match ALL selected genres (AND)"])
+
+    if user_input.strip():
+        with st.spinner("Curating your personalized stream..."):
+            seed_movie = None
+            if search_mode == "Search by Movie Title":
+                search_results = search_tmdb_movie(user_input.strip())
+                if search_results:
+                    seed_id = search_results[0]["id"]
+                    seed_movie = fetch_movie_details(seed_id)
+                    df_pool = build_candidate_pool(seed_movie_id=seed_id)
+                else:
+                    st.warning("Movie not found on TMDB. Showing top trending titles instead.")
+                    df_pool = build_candidate_pool(seed_movie_id=None)
+            else:
+                df_pool = build_candidate_pool(seed_movie_id=None)
+
+            vectorizer = TfidfVectorizer(stop_words="english")
+            tfidf_matrix = vectorizer.fit_transform(df_pool["combined_features"])
+
+            if seed_movie is not None:
+                target_vec = vectorizer.transform([seed_movie["combined_features"]])
+                ref_polarity = seed_movie["polarity"]
+                ref_subjectivity = seed_movie["subjectivity"]
+                ref_info = seed_movie
+                exclude_id = seed_movie["id"]
+                hero_movie = seed_movie
+                eyebrow_text = f"FEATURED SELECTION &bull; BECAUSE YOU SEARCHED {seed_movie['title'].upper()}"
+            else:
+                try:
+                    q_blob = TextBlob(user_input)
+                    ref_polarity = round(q_blob.sentiment.polarity, 3)
+                    ref_subjectivity = round(q_blob.sentiment.subjectivity, 3)
+                except Exception:
+                    ref_polarity = 0.0
+                    ref_subjectivity = 0.5
+                target_vec = vectorizer.transform([user_input])
+                ref_info = {"genres": selected_genres, "cast": [], "keywords": user_input.lower().split(), "polarity": ref_polarity}
+                exclude_id = None
+                hero_movie = df_pool.iloc[0].to_dict()
+                eyebrow_text = f"NLP VIBE MATCH &bull; DETECTED POLARITY: {ref_polarity}"
+
+            df_pool["content_score"] = cosine_similarity(target_vec, tfidf_matrix).flatten()
+            pol_diff = (df_pool["polarity"] - ref_polarity).abs()
+            sub_diff = (df_pool["subjectivity"] - ref_subjectivity).abs()
+            df_pool["sentiment_score"] = (1.0 - ((pol_diff + sub_diff) / 3.0)).clip(0, 1)
+
+            if rec_approach.startswith("Content-Based"):
+                df_pool["final_score"] = df_pool["content_score"]
+            elif rec_approach.startswith("Sentiment-Based"):
+                df_pool["final_score"] = (0.75 * df_pool["sentiment_score"]) + (0.25 * df_pool["content_score"])
+            else:
+                norm_rating = df_pool["rating"] / 10.0
+                df_pool["final_score"] = (0.55 * df_pool["content_score"]) + (0.25 * df_pool["sentiment_score"]) + (0.20 * norm_rating)
+
+            filtered_df = apply_core_filters(
+                df_pool, year_range, min_rating, min_votes, runtime_range,
+                selected_certs, selected_lang, personnel_query, selected_genres,
+                genre_operator, exclude_id=exclude_id
+            ).sort_values(by="final_score", ascending=False)
+
+            st.markdown(f"""
+            <div class="hero-banner" style="background-image: linear-gradient(90deg, #050A14 15%, rgba(5, 10, 20, 0.82) 55%, rgba(5, 10, 20, 0.25) 100%), url('{hero_movie['backdrop_url']}');">
+                <div class="hero-content">
+                    <div class="hero-eyebrow">{eyebrow_text}</div>
+                    <div class="hero-title">{hero_movie['title']} ({hero_movie['year']})</div>
+                    <div class="hero-meta">
+                        <span class="meta-badge">★ {hero_movie['rating']} TMDB</span>
+                        <span class="meta-badge">{hero_movie['certification']}</span>
+                        <span>{hero_movie['runtime']} MINS</span>
+                        <span>&bull;</span>
+                        <span>{hero_movie['genres_str']}</span>
+                        <span>&bull;</span>
+                        <span>Dir: {hero_movie['director_str']}</span>
+                    </div>
+                    <div class="hero-plot">{hero_movie['plot']}</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            st.markdown('<div class="section-header">Recommended For You</div>', unsafe_allow_html=True)
+            if filtered_df.empty:
+                st.warning("No titles matched all of your active filter settings. Open 'Refine Stream' above to widen your year, rating, or genre filters.")
+            else:
+                rec_cols = st.columns(5)
+                for idx, (_, row) in enumerate(filtered_df.head(10).iterrows()):
+                    with rec_cols[idx % 5]:
+                        with st.container(border=True):
+                            st.image(row["poster_url"], use_container_width=True)
+                            match_pct = int(min(max(row["final_score"] * 100 + 35, 65), 99))
+                            st.markdown(f'<div class="match-pill">{match_pct}% STREAM MATCH</div>', unsafe_allow_html=True)
+                            st.markdown(f'<div class="card-title" title="{row["title"]}">{row["title"]}</div>', unsafe_allow_html=True)
+                            st.markdown(f'<div class="card-sub">{row["year"]} &bull; ★ {row["rating"]} &bull; {row["certification"]}</div>', unsafe_allow_html=True)
+
+                            with st.expander("ℹ️ Details & Match"):
+                                explanation = build_similarity_explanation(ref_info, row)
+                                st.caption(f"💡 **Why It Matches:** {explanation}")
+                                st.caption(f"🎬 **Director:** {row['director_str']}")
+                                st.caption(f"🎭 **Cast:** {row['cast_str']}")
+                                st.caption(f"⏱️ **Runtime:** {row['runtime']}m | 🌐 **Lang:** {row['language']}")
+                                st.caption(f"💰 **Box Office:** ${row['revenue']:,} ({row['votes']:,} votes)")
+                                st.caption(f"📊 **Scores:** TF-IDF `{row['content_score']:.2f}` | NLP Tone `{row['sentiment_score']:.2f}`")
+                                st.write(row["plot"][:200] + "...")
+
+                            if st.button("➕ My List", key=f"rec_{row['id']}", use_container_width=True):
+                                if row["id"] not in [w["id"] for w in st.session_state.watchlist]:
+                                    st.session_state.watchlist.append(row.to_dict())
+                                    st.toast(f"Added {row['title']} to My List!")
+                                    st.rerun()
+
+# ==========================================
+# TAB 2: TRENDING & MARKET ANALYTICS
+# ==========================================
+with tab_trends:
+    st.markdown('<div class="section-header">Trending Now on CinePulse</div>', unsafe_allow_html=True)
+    df_trends = build_candidate_pool()
+
+    t_cols = st.columns(5)
+    for idx, (_, m_row) in enumerate(df_trends.head(5).iterrows()):
+        with t_cols[idx % 5]:
+            with st.container(border=True):
+                st.image(m_row["poster_url"], use_container_width=True)
+                st.markdown(f'<div class="match-pill">🔥 TRENDING #{idx + 1}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="card-title">{m_row["title"]}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="card-sub">{m_row["year"]} &bull; ★ {m_row["rating"]} &bull; {m_row["certification"]}</div>', unsafe_allow_html=True)
+                if st.button("➕ My List", key=f"tr_{m_row['id']}", use_container_width=True):
+                    if m_row["id"] not in [w["id"] for w in st.session_state.watchlist]:
+                        st.session_state.watchlist.append(m_row.to_dict())
+                        st.toast(f"Added {m_row['title']} to My List!")
+                        st.rerun()
+
+    st.markdown('<div class="section-header">Interactive Catalog Visualizations</div>', unsafe_allow_html=True)
+    col_a, col_b = st.columns(2)
+
+    crave_palette = ["#00A8E8", "#38BDF8", "#0072CE", "#7DD3FC", "#0284C7", "#BAE6FD"]
+
+    with col_a:
+        fig_scatter = px.scatter(
+            df_trends,
+            x="rating",
+            y="popularity",
+            size="votes",
+            color="decade",
+            hover_name="title",
+            hover_data=["year", "genres_str", "revenue"],
+            title="Audience Rating vs. Popularity Score (Sized by Vote Count)",
+            template="plotly_dark",
+            color_discrete_sequence=crave_palette
+        )
+        fig_scatter.update_layout(
+            paper_bgcolor="rgba(11, 23, 42, 0.85)",
+            plot_bgcolor="rgba(5, 10, 20, 0.85)"
+        )
+        st.plotly_chart(fig_scatter, use_container_width=True)
+
+    with col_b:
+        fig_sent = px.scatter(
+            df_trends,
+            x="polarity",
+            y="subjectivity",
+            color="rating",
+            hover_name="title",
+            title="NLP Plot Sentiment Map: Polarity vs. Subjectivity",
+            template="plotly_dark",
+            color_continuous_scale=["#09162E", "#0072CE", "#00A8E8", "#7DD3FC"]
+        )
+        fig_sent.update_layout(
+            paper_bgcolor="rgba(11, 23, 42, 0.85)",
+            plot_bgcolor="rgba(5, 10, 20, 0.85)"
+        )
+        st.plotly_chart(fig_sent, use_container_width=True)
+
+# ==========================================
+# TAB 3: COMPARATIVE MOVIE ANALYSIS
+# ==========================================
+with tab_compare:
+    st.markdown('<div class="section-header">Side-by-Side Title Comparison</div>', unsafe_allow_html=True)
+    df_comp = build_candidate_pool()
+    movie_titles = df_comp["title"].tolist()
+
+    c1, c2 = st.columns(2)
+    with c1:
+        movie_a_title = st.selectbox("Select First Title", movie_titles, index=0)
+    with c2:
+        default_b = 1 if len(movie_titles) > 1 else 0
+        movie_b_title = st.selectbox("Select Second Title", movie_titles, index=default_b)
+
+    row_a = df_comp[df_comp["title"] == movie_a_title].iloc[0]
+    row_b = df_comp[df_comp["title"] == movie_b_title].iloc[0]
+
+    p_col1, p_col2 = st.columns(2)
+    with p_col1:
+        with st.container(border=True):
+            ic1, ic2 = st.columns([1, 2])
+            with ic1:
+                st.image(row_a["poster_url"], use_container_width=True)
+            with ic2:
+                st.subheader(f"{row_a['title']} ({row_a['year']})")
+                st.caption(f"★ {row_a['rating']}/10 | {row_a['runtime']} mins | {row_a['certification']}")
+                st.write(f"**Genres:** {row_a['genres_str']}")
+                st.write(f"**Director:** {row_a['director_str']}")
+                st.write(f"**Box Office:** ${row_a['revenue']:,}")
+                st.write(f"**NLP Sentiment Polarity:** `{row_a['polarity']}`")
+
+    with p_col2:
+        with st.container(border=True):
+            ic3, ic4 = st.columns([1, 2])
+            with ic3:
+                st.image(row_b["poster_url"], use_container_width=True)
+            with ic4:
+                st.subheader(f"{row_b['title']} ({row_b['year']})")
+                st.caption(f"★ {row_b['rating']}/10 | {row_b['runtime']} mins | {row_b['certification']}")
+                st.write(f"**Genres:** {row_b['genres_str']}")
+                st.write(f"**Director:** {row_b['director_str']}")
+                st.write(f"**Box Office:** ${row_b['revenue']:,}")
+                st.write(f"**NLP Sentiment Polarity:** `{row_b['polarity']}`")
+
+    comp_table = pd.DataFrame({
+        "Attribute": ["Release Year", "TMDB Rating", "Vote Count", "Runtime (mins)", "US Certification", "Box Office Revenue", "NLP Plot Polarity", "Genres", "Director"],
+        row_a["title"]: [str(row_a["year"]), f"{row_a['rating']}/10", f"{row_a['votes']:,}", str(row_a["runtime"]), row_a["certification"], f"${row_a['revenue']:,}", str(row_a["polarity"]), row_a["genres_str"], row_a["director_str"]],
+        row_b["title"]: [str(row_b["year"]), f"{row_b['rating']}/10", f"{row_b['votes']:,}", str(row_b["runtime"]), row_b["certification"], f"${row_b['revenue']:,}", str(row_b["polarity"]), row_b["genres_str"], row_b["director_str"]]
+    })
+    st.dataframe(comp_table, use_container_width=True, hide_index=True)
+
+# ==========================================
+# TAB 4: USER WATCHLIST & PROFILE RECOMMENDATIONS
+# ==========================================
+with tab_watchlist:
+    st.markdown('<div class="section-header">My Saved List & Profile Recommendations</div>', unsafe_allow_html=True)
+    w_col1, w_col2 = st.columns([3, 1])
+    with w_col1:
+        add_title = st.text_input("Quickly add any movie by title to My List:", placeholder="e.g., Interstellar, Blade Runner 2049")
+    with w_col2:
+        st.write("")
+        st.write("")
+        if st.button("➕ Search & Add", use_container_width=True) and add_title.strip():
+            res = search_tmdb_movie(add_title.strip())
+            if res:
+                details = fetch_movie_details(res[0]["id"])
+                if details and details["id"] not in [w["id"] for w in st.session_state.watchlist]:
+                    st.session_state.watchlist.append(details)
+                    st.success(f"Added {details['title']} to My List!")
+                    st.rerun()
+
+    if not st.session_state.watchlist:
+        st.info("Your list is currently empty. Click '➕ My List' on any movie card on the Home or Trending tabs to build your personal taste profile!")
+    else:
+        wl_cols = st.columns(5)
+        for idx, item in enumerate(st.session_state.watchlist):
+            with wl_cols[idx % 5]:
+                with st.container(border=True):
+                    st.image(item["poster_url"], use_container_width=True)
+                    st.markdown(f'<div class="card-title">{item["title"]}</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="card-sub">{item["year"]} &bull; ★ {item["rating"]}</div>', unsafe_allow_html=True)
+
+        if st.button("🗑️ Clear My List"):
+            st.session_state.watchlist = []
+            st.rerun()
+
+        st.markdown('<div class="section-header">Because You Saved These Titles</div>', unsafe_allow_html=True)
+        df_all = build_candidate_pool()
+        watchlist_ids = [w["id"] for w in st.session_state.watchlist]
+        combined_profile_text = " ".join([w["combined_features"] for w in st.session_state.watchlist])
+
+        vec = TfidfVectorizer(stop_words="english")
+        mat = vec.fit_transform(df_all["combined_features"])
+        prof_vec = vec.transform([combined_profile_text])
+
+        df_all["profile_score"] = cosine_similarity(prof_vec, mat).flatten()
+        recs = df_all[~df_all["id"].isin(watchlist_ids)].sort_values(by="profile_score", ascending=False).head(5)
+
+        p_cols = st.columns(5)
+        for idx, (_, r) in enumerate(recs.iterrows()):
+            with p_cols[idx % 5]:
+                with st.container(border=True):
+                    st.image(r["poster_url"], use_container_width=True)
+                    pct = int(min(max(r["profile_score"] * 100 + 40, 70), 99))
+                    st.markdown(f'<div class="match-pill">{pct}% PROFILE MATCH</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="card-title">{r["title"]}</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="card-sub">{r["year"]} &bull; ★ {r["rating"]}</div>', unsafe_allow_html=True)
+
+# END OF FILE
