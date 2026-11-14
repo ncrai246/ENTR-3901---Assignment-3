@@ -7,13 +7,92 @@ from textblob import TextBlob
 import plotly.express as px
 
 # ==========================================
-# 1. PAGE CONFIGURATION & BRANDING
+# 1. PAGE CONFIGURATION & CRAVE UI STYLING
 # ==========================================
 st.set_page_config(
-    page_title="CinePulse AI | Movie Recommender",
+    page_title="CINEPULSE | Movie Discovery Engine",
     page_icon="🎬",
     layout="wide"
 )
+
+# Inject Crave-inspired Midnight Blue & Electric Cyan CSS
+st.markdown("""
+<style>
+    /* Main background and sidebar styling */
+    .stApp {
+        background: radial-gradient(circle at top right, #0F2547 0%, #060D1A 55%, #040811 100%);
+        color: #F0F6FC;
+    }
+    [data-testid="stSidebar"] {
+        background-color: #091326 !important;
+        border-right: 1px solid rgba(0, 168, 232, 0.2);
+    }
+    /* Custom Crave-style Hero Wordmark Banner */
+    .crave-header {
+        background: linear-gradient(90deg, #09162E 0%, #0F2952 60%, #004E89 100%);
+        border: 1px solid rgba(0, 168, 232, 0.35);
+        border-radius: 14px;
+        padding: 24px 30px;
+        margin-bottom: 22px;
+        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+    }
+    .crave-logo {
+        font-family: 'Segoe UI', Roboto, Helvetica, sans-serif;
+        font-size: 2.4rem;
+        font-weight: 900;
+        letter-spacing: 3px;
+        color: #FFFFFF;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .crave-badge {
+        background: linear-gradient(135deg, #00A8E8 0%, #0072CE 100%);
+        color: #FFFFFF;
+        font-size: 0.9rem;
+        font-weight: 800;
+        padding: 4px 12px;
+        border-radius: 6px;
+        letter-spacing: 1.5px;
+        vertical-align: middle;
+    }
+    .crave-subtitle {
+        color: #94B8D7;
+        font-size: 0.98rem;
+        margin-top: 8px;
+        margin-bottom: 0;
+    }
+    /* Primary CTA Buttons */
+    div.stButton > button[kind="primary"] {
+        background: linear-gradient(90deg, #0072CE 0%, #00A8E8 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        padding: 0.55rem 1.4rem;
+        transition: all 0.2s ease-in-out;
+    }
+    div.stButton > button[kind="primary"]:hover {
+        background: linear-gradient(90deg, #0088F0 0%, #2BC0FF 100%);
+        box-shadow: 0 0 16px rgba(0, 168, 232, 0.55);
+        transform: translateY(-1px);
+    }
+    /* Movie result cards (bordered containers) */
+    [data-testid="stVerticalBlockBorderWrapper"] {
+        background-color: rgba(14, 27, 46, 0.85) !important;
+        border: 1px solid rgba(0, 168, 232, 0.28) !important;
+        border-radius: 12px !important;
+        padding: 8px !important;
+    }
+    /* Movie poster rounded corners */
+    [data-testid="stImage"] img {
+        border-radius: 10px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # API Key setup using Streamlit Secrets
 if "TMDB_KEY" in st.secrets:
@@ -258,8 +337,16 @@ genre_operator = st.sidebar.radio("Genre Logical Operator", ["Match ANY selected
 # ==========================================
 # 5. MAIN BRANDED HEADER & NAVIGATION TABS
 # ==========================================
-st.title("🎬 CinePulse AI: Intelligent Movie Discovery Engine")
-st.markdown("**ENTR 3901 Movie Recommendation System** | Powered by Live TMDB Metadata, TF-IDF Feature Extraction, and NLP Sentiment Analysis")
+st.markdown("""
+<div class="crave-header">
+    <div class="crave-logo">
+        CINEPULSE <span class="crave-badge">AI STREAM</span>
+    </div>
+    <p class="crave-subtitle">
+        ENTR 3901 Intelligent Movie Discovery Engine | Powered by Live TMDB Metadata, TF-IDF Feature Extraction & NLP Sentiment Analysis
+    </p>
+</div>
+""", unsafe_allow_html=True)
 
 tab1, tab2, tab3, tab4 = st.tabs([
     "🔍 Recommendations & NLP Query",
@@ -371,7 +458,7 @@ with tab1:
                                 else:
                                     st.write("No Poster Available")
                             with col2:
-                                st.markdown(f"### {row['title']} ({row['year']}) — Match Score: `{row['final_score']:.2f}`")
+                                st.markdown(f"### {row['title']} ({row['year']}) | Match Score: `{row['final_score']:.2f}`")
                                 st.caption(
                                     f"⭐ **Rating:** {row['rating']}/10 ({row['votes']:,} votes) | "
                                     f"⏱️ **Runtime:** {row['runtime']} mins | "
@@ -402,7 +489,13 @@ with tab2:
             color="decade",
             hover_name="title",
             hover_data=["year", "genres_str", "revenue"],
-            title="Audience Rating vs. Popularity Score (Sized by Vote Count)"
+            title="Audience Rating vs. Popularity Score (Sized by Vote Count)",
+            template="plotly_dark",
+            color_discrete_sequence=px.colors.sequential.Ice_r
+        )
+        fig_scatter.update_layout(
+            paper_bgcolor="rgba(14, 27, 46, 0.7)",
+            plot_bgcolor="rgba(6, 13, 26, 0.7)"
         )
         st.plotly_chart(fig_scatter, use_container_width=True)
 
@@ -413,7 +506,13 @@ with tab2:
             y="subjectivity",
             color="rating",
             hover_name="title",
-            title="NLP Plot Sentiment Map: Polarity vs. Subjectivity"
+            title="NLP Plot Sentiment Map: Polarity vs. Subjectivity",
+            template="plotly_dark",
+            color_continuous_scale="Tealgrn"
+        )
+        fig_sent.update_layout(
+            paper_bgcolor="rgba(14, 27, 46, 0.7)",
+            plot_bgcolor="rgba(6, 13, 26, 0.7)"
         )
         st.plotly_chart(fig_sent, use_container_width=True)
 
@@ -496,4 +595,4 @@ with tab4:
         recs = df_all[~df_all["id"].isin(watchlist_ids)].sort_values(by="profile_score", ascending=False).head(4)
 
         for _, r in recs.iterrows():
-            st.markdown(f"**{r['title']} ({r['year']})** — Profile Match Score: `{r['profile_score']:.2f}` | ⭐ {r['rating']} | *{r['genres_str']}*")
+            st.markdown(f"**{r['title']} ({r['year']})** | Profile Match Score: `{r['profile_score']:.2f}` | ⭐ {r['rating']} | *{r['genres_str']}*")
