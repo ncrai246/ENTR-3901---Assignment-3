@@ -17,7 +17,7 @@ except ImportError:
 # 1. PAGE CONFIGURATION & CRAVE STREAMING UI
 # ==========================================
 st.set_page_config(
-    page_title="CINEPULSE | Stream Smarter",
+    page_title="WatchThis! | Stream Smarter",
     page_icon="🎬",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -666,7 +666,7 @@ def render_full_movie_page(m_data):
 st.markdown("""
 <div class="crave-navbar">
     <div class="crave-wordmark">
-        CINEPULSE <span class="crave-pill">STREAM AI</span>
+        WatchThis! <span class="crave-pill">STREAM AI</span>
     </div>
     <div class="crave-tagline">
         Powered by TMDB Live Metadata &bull; TF-IDF Vectorization &bull; NLP Sentiment Engine
@@ -938,7 +938,7 @@ with tab_home:
 # TAB 2: TRENDING & MARKET ANALYTICS
 # ==========================================
 with tab_trends:
-    st.markdown('<div class="section-header">Trending Now on CinePulse</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">Trending Now on WatchThis!</div>', unsafe_allow_html=True)
     df_trends = df_base_catalog.copy()
 
     t_cols = st.columns(5)
