@@ -904,7 +904,24 @@ with tab_home:
                 </div>
             </div>
             """, unsafe_allow_html=True)
+<div class="hero-plot">{hero_movie['plot']}</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
+            h_col1, h_col2, _ = st.columns([1.3, 1.3, 3.4])
+            with h_col1:
+                if st.button(f"🎬 Open Full Page", key=f"hero_open_{hero_movie['id']}", type="primary", use_container_width=True):
+                    st.session_state.detail_movie = hero_movie
+                    st.rerun()
+            with h_col2:
+                if st.button(f"➕ Add to My List", key=f"hero_add_{hero_movie['id']}", use_container_width=True):
+                    if hero_movie["id"] not in [w["id"] for w in st.session_state.watchlist]:
+                        st.session_state.watchlist.append(hero_movie)
+                        st.toast(f"Added {hero_movie['title']} to My List!")
+                        st.rerun()
+
+            st.markdown('<div class="section-header">Recommended For You (Click Any Movie to Open Full Page)</div>', unsafe_allow_html=True)
             st.markdown('<div class="section-header">Recommended For You (Click Any Movie to Open Full Page)</div>', unsafe_allow_html=True)
             if filtered_df.empty:
                 st.warning("No titles matched all of your active filter settings. Open 'Advanced Filtering' above to widen your year, rating, or genre filters.")
