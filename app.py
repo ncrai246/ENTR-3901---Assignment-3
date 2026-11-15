@@ -630,10 +630,30 @@ def render_full_movie_page(m_data):
             """, unsafe_allow_html=True)
 
         st.markdown("### 🎬 Production, Cast & Box Office Metadata")
+        rev_str = f"${m_data['revenue']:,}" if m_data["revenue"] > 0 else "Unreported"
+        bud_str = f"${m_data['budget']:,}" if m_data["budget"] > 0 else "Unreported"
         m1, m2, m3 = st.columns(3)
-        m1.metric("Director", m_data["director_str"])
-        m2.metric("Box Office Revenue", f"${m_data['revenue']:,}" if m_data["revenue"] > 0 else "Unreported")
-        m3.metric("Production Budget", f"${m_data['budget']:,}" if m_data["budget"] > 0 else "Unreported")
+        m1.markdown(
+            f'<div class="detail-box" style="margin-top:0;">'
+            f'<div style="color:#8BA3C7; font-size:0.85rem;">Director</div>'
+            f'<div style="color:#FFFFFF; font-size:1.25rem; font-weight:700; line-height:1.35; margin-top:4px;">{m_data["director_str"]}</div>'
+            f'</div>',
+            unsafe_allow_html=True
+        )
+        m2.markdown(
+            f'<div class="detail-box" style="margin-top:0;">'
+            f'<div style="color:#8BA3C7; font-size:0.85rem;">Box Office Revenue</div>'
+            f'<div style="color:#FFFFFF; font-size:1.25rem; font-weight:700; line-height:1.35; margin-top:4px;">{rev_str}</div>'
+            f'</div>',
+            unsafe_allow_html=True
+        )
+        m3.markdown(
+            f'<div class="detail-box" style="margin-top:0;">'
+            f'<div style="color:#8BA3C7; font-size:0.85rem;">Production Budget</div>'
+            f'<div style="color:#FFFFFF; font-size:1.25rem; font-weight:700; line-height:1.35; margin-top:4px;">{bud_str}</div>'
+            f'</div>',
+            unsafe_allow_html=True
+        )
 
         st.markdown(f"**🎭 Top Billed Cast:** {m_data['cast_str']}")
         st.markdown(f"**🏷️ Genres:** {m_data['genres_str']}")
