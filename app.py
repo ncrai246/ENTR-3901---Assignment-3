@@ -26,252 +26,252 @@ st.set_page_config(
 # Crave Streaming Platform CSS Overhaul + Circular 'i' Hover Tooltips
 st.markdown("""
 <style>
-    /* Hide default Streamlit clutter and enforce Crave Midnight Navy background */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    .stApp {
-        background-color: #050A14;
-        background-image: radial-gradient(circle at 50% 0%, #0D2242 0%, #050A14 70%);
-        color: #F0F6FC;
-    }
-    .block-container {
-        padding-top: 2rem !important;
-        padding-bottom: 3rem !important;
-        max-width: 1440px !important;
-    }
+/* Hide default Streamlit clutter and enforce Crave Midnight Navy background */
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+.stApp {
+    background-color: #050A14;
+    background-image: radial-gradient(circle at 50% 0%, #0D2242 0%, #050A14 70%);
+    color: #F0F6FC;
+}
+.block-container {
+    padding-top: 2rem !important;
+    padding-bottom: 3rem !important;
+    max-width: 1440px !important;
+}
 
-    /* Top Crave Navigation Bar */
-    .crave-navbar {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 12px 24px;
-        background: rgba(8, 17, 34, 0.85);
-        backdrop-filter: blur(12px);
-        border-bottom: 1px solid rgba(0, 168, 232, 0.25);
-        border-radius: 12px;
-        margin-bottom: 20px;
-    }
-    .crave-wordmark {
-        font-family: 'Segoe UI', Roboto, Helvetica, sans-serif;
-        font-size: 2.1rem;
-        font-weight: 900;
-        letter-spacing: 3.5px;
-        color: #FFFFFF;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-    .crave-pill {
-        background: linear-gradient(135deg, #00A8E8 0%, #0066CC 100%);
-        color: #FFFFFF;
-        font-size: 0.78rem;
-        font-weight: 800;
-        padding: 4px 10px;
-        border-radius: 4px;
-        letter-spacing: 1.5px;
-    }
-    .crave-tagline {
-        color: #8AB4F8;
-        font-size: 0.9rem;
-        font-weight: 500;
-    }
+/* Top Crave Navigation Bar */
+.crave-navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 24px;
+    background: rgba(8, 17, 34, 0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(0, 168, 232, 0.25);
+    border-radius: 12px;
+    margin-bottom: 20px;
+}
+.crave-wordmark {
+    font-family: 'Segoe UI', Roboto, Helvetica, sans-serif;
+    font-size: 2.1rem;
+    font-weight: 900;
+    letter-spacing: 3.5px;
+    color: #FFFFFF;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.crave-pill {
+    background: linear-gradient(135deg, #00A8E8 0%, #0066CC 100%);
+    color: #FFFFFF;
+    font-size: 0.78rem;
+    font-weight: 800;
+    padding: 4px 10px;
+    border-radius: 4px;
+    letter-spacing: 1.5px;
+}
+.crave-tagline {
+    color: #8AB4F8;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
 
-    /* Custom Filter Labels with Circular 'i' Hover Tooltips */
-    .filter-header {
-        font-size: 1.02rem;
-        font-weight: 800;
-        color: #FFFFFF;
-        margin-bottom: 12px;
-        padding-bottom: 6px;
-        border-bottom: 1px solid rgba(0, 168, 232, 0.25);
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .filter-label {
-        font-size: 0.86rem;
-        font-weight: 600;
-        color: #F0F6FC;
-        margin-top: 6px;
-        margin-bottom: 4px;
-        display: flex;
-        align-items: center;
-        gap: 7px;
-    }
-    .info-circle {
-        position: relative;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 17px;
-        height: 17px;
-        border-radius: 50%;
-        background: rgba(0, 168, 232, 0.18);
-        border: 1.5px solid #00A8E8;
-        color: #5CE1E6;
-        font-family: Georgia, serif;
-        font-size: 11px;
-        font-weight: 700;
-        font-style: italic;
-        cursor: pointer;
-        user-select: none;
-        transition: all 0.2s ease;
-    }
-    .info-circle:hover {
-        background: #00A8E8;
-        color: #050A14;
-        box-shadow: 0 0 10px rgba(0, 168, 232, 0.6);
-    }
-    .info-circle .tooltip-box {
-        visibility: hidden;
-        opacity: 0;
-        width: 250px;
-        background: #091528;
-        color: #E2EEF9;
-        text-align: left;
-        font-family: 'Segoe UI', Roboto, Helvetica, sans-serif;
-        font-size: 0.79rem;
-        font-weight: 400;
-        font-style: normal;
-        line-height: 1.45;
-        padding: 10px 12px;
-        border-radius: 8px;
-        border: 1px solid #00A8E8;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.85);
-        position: absolute;
-        z-index: 99999;
-        bottom: 135%;
-        left: 50%;
-        transform: translateX(-50%);
-        transition: opacity 0.18s ease;
-        pointer-events: none;
-    }
-    .info-circle:hover .tooltip-box {
-        visibility: visible;
-        opacity: 1;
-    }
+/* Custom Filter Labels with Circular 'i' Hover Tooltips */
+.filter-header {
+    font-size: 1.02rem;
+    font-weight: 800;
+    color: #FFFFFF;
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(0, 168, 232, 0.25);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.filter-label {
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: #F0F6FC;
+    margin-top: 6px;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+.info-circle {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 17px;
+    height: 17px;
+    border-radius: 50%;
+    background: rgba(0, 168, 232, 0.18);
+    border: 1.5px solid #00A8E8;
+    color: #5CE1E6;
+    font-family: Georgia, serif;
+    font-size: 11px;
+    font-weight: 700;
+    font-style: italic;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s ease;
+}
+.info-circle:hover {
+    background: #00A8E8;
+    color: #050A14;
+    box-shadow: 0 0 10px rgba(0, 168, 232, 0.6);
+}
+.info-circle .tooltip-box {
+    visibility: hidden;
+    opacity: 0;
+    width: 250px;
+    background: #091528;
+    color: #E2EEF9;
+    text-align: left;
+    font-family: 'Segoe UI', Roboto, Helvetica, sans-serif;
+    font-size: 0.79rem;
+    font-weight: 400;
+    font-style: normal;
+    line-height: 1.45;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #00A8E8;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.85);
+    position: absolute;
+    z-index: 99999;
+    bottom: 135%;
+    left: 50%;
+    transform: translateX(-50%);
+    transition: opacity 0.18s ease;
+    pointer-events: none;
+}
+.info-circle:hover .tooltip-box {
+    visibility: visible;
+    opacity: 1;
+}
 
-    /* Cinematic Widescreen Hero Billboard */
-    .hero-banner {
-        position: relative;
-        border-radius: 16px;
-        overflow: hidden;
-        min-height: 360px;
-        display: flex;
-        align-items: flex-end;
-        padding: 36px 40px;
-        margin-bottom: 28px;
-        border: 1px solid rgba(0, 168, 232, 0.3);
-        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65);
-        background-size: cover;
-        background-position: center 20%;
-    }
-    .hero-content {
-        max-width: 760px;
-        z-index: 2;
-    }
-    .hero-eyebrow {
-        color: #00A8E8;
-        font-size: 0.82rem;
-        font-weight: 800;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        margin-bottom: 6px;
-    }
-    .hero-title {
-        font-size: 2.8rem;
-        font-weight: 900;
-        color: #FFFFFF;
-        line-height: 1.1;
-        margin-bottom: 12px;
-        text-shadow: 0 4px 16px rgba(0, 0, 0, 0.8);
-    }
-    .hero-meta {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        align-items: center;
-        margin-bottom: 14px;
-        font-size: 0.88rem;
-        font-weight: 600;
-        color: #D0E2F2;
-    }
-    .meta-badge {
-        background: rgba(0, 168, 232, 0.2);
-        border: 1px solid #00A8E8;
-        color: #5CE1E6;
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-size: 0.78rem;
-        font-weight: 700;
-    }
-    .hero-plot {
-        color: #C2D6EA;
-        font-size: 0.98rem;
-        line-height: 1.55;
-        margin-bottom: 8px;
-        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
-    }
+/* Cinematic Widescreen Hero Billboard */
+.hero-banner {
+    position: relative;
+    border-radius: 16px;
+    overflow: hidden;
+    min-height: 360px;
+    display: flex;
+    align-items: flex-end;
+    padding: 36px 40px;
+    margin-bottom: 14px;
+    border: 1px solid rgba(0, 168, 232, 0.3);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65);
+    background-size: cover;
+    background-position: center 20%;
+}
+.hero-content {
+    max-width: 760px;
+    z-index: 2;
+}
+.hero-eyebrow {
+    color: #00A8E8;
+    font-size: 0.82rem;
+    font-weight: 800;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+.hero-title {
+    font-size: 2.8rem;
+    font-weight: 900;
+    color: #FFFFFF;
+    line-height: 1.1;
+    margin-bottom: 12px;
+    text-shadow: 0 4px 16px rgba(0, 0, 0, 0.8);
+}
+.hero-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 14px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #D0E2F2;
+}
+.meta-badge {
+    background: rgba(0, 168, 232, 0.2);
+    border: 1px solid #00A8E8;
+    color: #5CE1E6;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+.hero-plot {
+    color: #C2D6EA;
+    font-size: 0.98rem;
+    line-height: 1.55;
+    margin-bottom: 8px;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
+}
 
-    /* Poster Grid Cards & Hover Animations */
-    [data-testid="stVerticalBlockBorderWrapper"] {
-        background: linear-gradient(180deg, #0B172A 0%, #07101E 100%) !important;
-        border: 1px solid rgba(0, 168, 232, 0.18) !important;
-        border-radius: 12px !important;
-        transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease !important;
-    }
-    [data-testid="stVerticalBlockBorderWrapper"]:hover {
-        transform: translateY(-5px) !important;
-        border-color: #00A8E8 !important;
-        box-shadow: 0 10px 24px rgba(0, 168, 232, 0.25) !important;
-    }
-    [data-testid="stImage"] img {
-        border-radius: 8px !important;
-        width: 100% !important;
-    }
-    .match-pill {
-        display: inline-block;
-        background: rgba(0, 168, 232, 0.18);
-        border: 1px solid #00A8E8;
-        color: #38BDF8;
-        font-size: 0.76rem;
-        font-weight: 800;
-        padding: 2px 8px;
-        border-radius: 4px;
-        margin-bottom: 6px;
-    }
-    .card-title {
-        font-size: 0.98rem;
-        font-weight: 700;
-        color: #FFFFFF;
-        line-height: 1.25;
-        min-height: 2.5rem;
-        margin-bottom: 4px;
-    }
-    .card-sub {
-        font-size: 0.8rem;
-        color: #8BA3C7;
-        margin-bottom: 10px;
-    }
-    .section-header {
-        font-size: 1.35rem;
-        font-weight: 800;
-        color: #FFFFFF;
-        letter-spacing: 0.5px;
-        margin: 18px 0 12px 0;
-        border-left: 4px solid #00A8E8;
-        padding-left: 12px;
-    }
-    .detail-box {
-        background: rgba(11, 23, 42, 0.9);
-        border: 1px solid rgba(0, 168, 232, 0.3);
-        border-radius: 12px;
-        padding: 20px;
-        margin-top: 12px;
-        margin-bottom: 16px;
-    }
-    [data-testid="stMetricValue"] {
+/* Poster Grid Cards & Hover Animations */
+[data-testid="stVerticalBlockBorderWrapper"] {
+    background: linear-gradient(180deg, #0B172A 0%, #07101E 100%) !important;
+    border: 1px solid rgba(0, 168, 232, 0.18) !important;
+    border-radius: 12px !important;
+    transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease !important;
+}
+[data-testid="stVerticalBlockBorderWrapper"]:hover {
+    transform: translateY(-5px) !important;
+    border-color: #00A8E8 !important;
+    box-shadow: 0 10px 24px rgba(0, 168, 232, 0.25) !important;
+}
+[data-testid="stImage"] img {
+    border-radius: 8px !important;
+    width: 100% !important;
+}
+.match-pill {
+    display: inline-block;
+    background: rgba(0, 168, 232, 0.18);
+    border: 1px solid #00A8E8;
+    color: #38BDF8;
+    font-size: 0.76rem;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-bottom: 6px;
+}
+.card-title {
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: #FFFFFF;
+    line-height: 1.25;
+    min-height: 2.5rem;
+    margin-bottom: 4px;
+}
+.card-sub {
+    font-size: 0.8rem;
+    color: #8BA3C7;
+    margin-bottom: 10px;
+}
+.section-header {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: #FFFFFF;
+    letter-spacing: 0.5px;
+    margin: 18px 0 12px 0;
+    border-left: 4px solid #00A8E8;
+    padding-left: 12px;
+}
+.detail-box {
+    background: rgba(11, 23, 42, 0.9);
+    border: 1px solid rgba(0, 168, 232, 0.3);
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 12px;
+    margin-bottom: 16px;
+}
+[data-testid="stMetricValue"] {
     white-space: normal !important;
     overflow: visible !important;
     text-overflow: unset !important;
@@ -303,10 +303,8 @@ else:
 
 if "watchlist" not in st.session_state:
     st.session_state.watchlist = []
-
 if "active_movie_id" not in st.session_state:
     st.session_state.active_movie_id = 603  # Defaults to The Matrix (1999)
-
 if "detail_movie" not in st.session_state:
     st.session_state.detail_movie = None
 
@@ -369,9 +367,8 @@ def fetch_movie_details(movie_id):
 
     poster_path = d.get("poster_path")
     backdrop_path = d.get("backdrop_path")
-    poster_url = f"https://image.tmdb.org/t/p/w500{poster_path}" if poster_path else "https://via.placeholder.com/500x750/0B172A/00A8E8?text=No+Poster"
+    poster_url = f"https://image.tmdb.org/t/p/w500{poster_path}" if poster_path else "https://via.placeholder.com/500x750?text=No+Poster"
     backdrop_url = f"https://image.tmdb.org/t/p/original{backdrop_path}" if backdrop_path else poster_url
-
     title_clean = d.get("title", "Unknown Title").strip()
 
     return {
@@ -463,7 +460,6 @@ def live_google_style_autocomplete(searchterm: str):
     """Callback for st_searchbox that cleans formatting, ranks by popularity, and removes duplicate titles."""
     if not searchterm:
         return []
-
     clean_q = searchterm.split("|")[0].split("(")[0].strip()
     if len(clean_q) < 2:
         return []
@@ -478,7 +474,6 @@ def live_google_style_autocomplete(searchterm: str):
         rel = (m.get("release_date") or "")[:4]
         year_str = rel if rel else "TBA"
         rating = round(m.get("vote_average") or 0.0, 1)
-
         dedup_key = (title.lower(), year_str)
         if m_id and title and dedup_key not in seen_title_years:
             label = f"{title} ({year_str}) | ★ {rating}"
@@ -576,7 +571,7 @@ def render_full_movie_page(m_data):
             st.session_state.detail_movie = None
             st.rerun()
     with top_b2:
-        if st.button("🎯 Find Movies Similar to This Title", use_container_width=True):
+        if st.button("🔍 Find Movies Similar to This Title", use_container_width=True):
             st.session_state.active_movie_id = m_data["id"]
             st.session_state.detail_movie = None
             st.rerun()
@@ -606,7 +601,6 @@ def render_full_movie_page(m_data):
     d_col1, d_col2 = st.columns([1, 2.6])
     with d_col1:
         st.image(m_data["poster_url"], use_container_width=True)
-
     with d_col2:
         st.markdown("### 📖 Complete Plot Synopsis")
         st.write(m_data["plot"])
@@ -636,28 +630,28 @@ def render_full_movie_page(m_data):
         m1.markdown(
             f'<div class="detail-box" style="margin-top:0;">'
             f'<div style="color:#8BA3C7; font-size:0.85rem;">Director</div>'
-            f'<div style="color:#FFFFFF; font-size:1.25rem; font-weight:700; line-height:1.35; margin-top:4px;">{m_data["director_str"]}</div>'
+            f'<div style="color:#FFFFFF; font-size:1.2rem; font-weight:700; line-height:1.35; margin-top:4px;">{m_data["director_str"]}</div>'
             f'</div>',
             unsafe_allow_html=True
         )
         m2.markdown(
             f'<div class="detail-box" style="margin-top:0;">'
             f'<div style="color:#8BA3C7; font-size:0.85rem;">Box Office Revenue</div>'
-            f'<div style="color:#FFFFFF; font-size:1.25rem; font-weight:700; line-height:1.35; margin-top:4px;">{rev_str}</div>'
+            f'<div style="color:#FFFFFF; font-size:1.2rem; font-weight:700; line-height:1.35; margin-top:4px;">{rev_str}</div>'
             f'</div>',
             unsafe_allow_html=True
         )
         m3.markdown(
             f'<div class="detail-box" style="margin-top:0;">'
             f'<div style="color:#8BA3C7; font-size:0.85rem;">Production Budget</div>'
-            f'<div style="color:#FFFFFF; font-size:1.25rem; font-weight:700; line-height:1.35; margin-top:4px;">{bud_str}</div>'
+            f'<div style="color:#FFFFFF; font-size:1.2rem; font-weight:700; line-height:1.35; margin-top:4px;">{bud_str}</div>'
             f'</div>',
             unsafe_allow_html=True
         )
 
-        st.markdown(f"**🎭 Top Billed Cast:** {m_data['cast_str']}")
-        st.markdown(f"**🏷️ Genres:** {m_data['genres_str']}")
-        st.markdown(f"**🔑 TMDB Plot Keywords & Themes:** {m_data.get('keywords_str', 'None listed')}")
+        st.markdown(f"**🌟 Top Billed Cast:** {m_data['cast_str']}")
+        st.markdown(f"**🎭 Genres:** {m_data['genres_str']}")
+        st.markdown(f"**🏷️ TMDB Plot Keywords & Themes:** {m_data.get('keywords_str', 'None listed')}")
         st.markdown(f"**⏱️ Runtime:** {m_data['runtime']} minutes &nbsp;|&nbsp; **🔞 US Certification:** {m_data['certification']} &nbsp;|&nbsp; **🌐 Original Language:** {m_data['language']}")
 
 # ==========================================
@@ -694,7 +688,7 @@ with tab_home:
         with s_col1:
             render_label_with_info(
                 "Discovery Mode",
-                "Choose whether to search for a specific movie title you already know, or type a sentence describing the mood, plot, or vibe you feel like watching."
+                "Choose whether to search for a specific movie title you already know, or type a sentence describing the plot, mood, or vibe you feel like watching."
             )
             search_mode = st.selectbox(
                 "Discovery Mode",
@@ -707,7 +701,7 @@ with tab_home:
             if search_mode == "Search by Movie Title":
                 render_label_with_info(
                     "Search Movies (Live Auto-Complete Dropdown)",
-                    "Start typing any movie title. A live dropdown list will automatically appear below the bar as you type so you can click your movie directly."
+                    "Start typing any movie title. A live dropdown list will automatically appear below the bar as you type, even if you make a spelling mistake."
                 )
                 if HAS_SEARCHBOX:
                     picked_result = st_searchbox(
@@ -728,7 +722,7 @@ with tab_home:
             else:
                 render_label_with_info(
                     "Describe Vibe, Plot, or Themes",
-                    "Type any plain-English description of what you want to watch (like 'a mind-bending space adventure'). The AI will match your words and mood against movie plots."
+                    "Type any plain-English description of what you want to watch (like 'a mind-bending space adventure' or 'an uplifting underdog sports story')."
                 )
                 user_nlp_query = st.text_input(
                     "Describe Vibe, Plot, or Themes",
@@ -740,17 +734,15 @@ with tab_home:
         # Renamed Drawer with Circular 'i' Plain-English Tooltips on Every Control
         with st.expander("🎛️ Advanced Filtering", expanded=False):
             f_col1, f_col2, f_col3 = st.columns(3)
-
             with f_col1:
                 render_label_with_info(
                     "AI Engine & Temporal Filter",
                     "Control how the AI brain ranks recommendations and narrow down movies by when they came out or how long they run.",
                     is_header=True
                 )
-
                 render_label_with_info(
                     "Recommendation Algorithm",
-                    "Picks how the AI finds matches: Hybrid blends plot, mood, and viewer ratings; Content-Based matches shared genres, cast, and plot keywords; Sentiment-Based matches the emotional tone (dark vs. uplifting) of the story."
+                    "Picks how the AI finds matches: Hybrid blends plot, mood, and viewer ratings; Content-Based matches storyline keywords, cast, and genres; Sentiment-Based matches the emotional tone of the story."
                 )
                 rec_approach = st.selectbox(
                     "Recommendation Algorithm",
@@ -761,16 +753,14 @@ with tab_home:
                     ],
                     label_visibility="collapsed"
                 )
-
                 render_label_with_info(
                     "Release Year Range",
-                    "Only show movies released between these two years. Slide the handles to focus on modern releases or classic films from a specific era."
+                    "Only show movies released between these two years. Slide the handles to focus on modern releases or classic eras."
                 )
                 year_range = st.slider("Release Year Range", 1970, 2026, (1990, 2026), label_visibility="collapsed")
-
                 render_label_with_info(
                     "Runtime Bracket (mins)",
-                    "Filter movies by their total length in minutes. Great when you want a quick 90-minute movie night or a longer 3-hour epic."
+                    "Filter movies by their total length in minutes. Great when you want a quick 90-minute movie night or a 3-hour epic."
                 )
                 runtime_range = st.slider("Runtime Bracket (mins)", 40, 240, (60, 220), label_visibility="collapsed")
 
@@ -780,26 +770,22 @@ with tab_home:
                     "Set quality standards for viewer ratings and filter by age appropriateness or spoken language.",
                     is_header=True
                 )
-
                 render_label_with_info(
                     "Minimum TMDB Rating",
-                    "Hides poorly rated movies. Only movies with an average fan score equal to or higher than this number (on a 0 to 10 scale) will appear."
+                    "Hides poorly rated movies. Only movies with an average fan score equal to or higher than this number (out of 10) will be shown."
                 )
                 min_rating = st.slider("Minimum TMDB Rating", 0.0, 10.0, 6.0, 0.5, label_visibility="collapsed")
-
                 render_label_with_info(
                     "Minimum Vote Count",
-                    "Makes sure ratings are trustworthy by requiring a minimum number of viewer reviews. Raising this hides obscure movies that only have a handful of votes."
+                    "Makes sure ratings are trustworthy by requiring a minimum number of viewer reviews. Raising this hides obscure movies with only a few votes."
                 )
                 min_votes = st.number_input("Minimum Vote Count", min_value=0, max_value=10000, value=50, step=50, label_visibility="collapsed")
-
                 render_label_with_info(
                     "US Certification",
                     "Filter by official MPAA age rating: G (General Audiences), PG (Parental Guidance), PG-13 (Parents Strongly Cautioned), R (Restricted 17+), or NR (Not Rated)."
                 )
                 all_certs = ["G", "PG", "PG-13", "R", "NR"]
                 selected_certs = st.multiselect("US Certification", all_certs, default=all_certs, label_visibility="collapsed")
-
                 render_label_with_info(
                     "Original Language",
                     "Filter movies by the primary language they were originally filmed in (All Languages, English, French, Spanish, Japanese, or Korean)."
@@ -812,23 +798,20 @@ with tab_home:
                     "Search for your favorite actors or directors and combine movie genres.",
                     is_header=True
                 )
-
                 render_label_with_info(
                     "Actor or Director Preference",
-                    "Type the name of an actor or director (such as Keanu Reeves or Christopher Nolan) to only show movies they starred in or directed."
+                    "Type the name of an actor or director (such as Keanu Reeves or Christopher Nolan) to only show movies they worked on."
                 )
                 personnel_query = st.text_input("Actor or Director Preference", placeholder="e.g., Keanu Reeves, Christopher Nolan", label_visibility="collapsed")
-
                 render_label_with_info(
                     "Filter by Genres",
                     "Select one or more movie categories (such as Action, Sci-Fi, or Comedy) to narrow down your recommendations."
                 )
                 genre_options = ["Action", "Adventure", "Animation", "Comedy", "Crime", "Drama", "Family", "Fantasy", "Horror", "Mystery", "Romance", "Science Fiction", "Thriller"]
                 selected_genres = st.multiselect("Filter by Genres", genre_options, label_visibility="collapsed")
-
                 render_label_with_info(
                     "Genre Logic",
-                    "Controls how multiple selected genres work together: 'ANY (OR)' shows movies that have at least one of your chosen genres, while 'ALL (AND)' requires a movie to have every single genre you picked at the same time."
+                    "Controls how multiple selected genres work together: 'ANY (OR)' shows movies that have at least one of your chosen genres; 'ALL (AND)' only shows movies that contain every single genre you picked."
                 )
                 genre_operator = st.radio("Genre Logic", ["Match ANY selected genre (OR)", "Match ALL selected genres (AND)"], label_visibility="collapsed")
 
@@ -904,27 +887,23 @@ with tab_home:
                 </div>
             </div>
             """, unsafe_allow_html=True)
-<div class="hero-plot">{hero_movie['plot']}</div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
 
+            # Action Buttons for the Searched / Featured Hero Movie
             h_col1, h_col2, _ = st.columns([1.3, 1.3, 3.4])
             with h_col1:
-                if st.button(f"🎬 Open Full Page", key=f"hero_open_{hero_movie['id']}", type="primary", use_container_width=True):
+                if st.button("🎬 Open Full Page", key=f"hero_open_{hero_movie['id']}", type="primary", use_container_width=True):
                     st.session_state.detail_movie = hero_movie
                     st.rerun()
             with h_col2:
-                if st.button(f"➕ Add to My List", key=f"hero_add_{hero_movie['id']}", use_container_width=True):
+                if st.button("➕ Add to My List", key=f"hero_add_{hero_movie['id']}", use_container_width=True):
                     if hero_movie["id"] not in [w["id"] for w in st.session_state.watchlist]:
                         st.session_state.watchlist.append(hero_movie)
                         st.toast(f"Added {hero_movie['title']} to My List!")
                         st.rerun()
 
             st.markdown('<div class="section-header">Recommended For You (Click Any Movie to Open Full Page)</div>', unsafe_allow_html=True)
-            st.markdown('<div class="section-header">Recommended For You (Click Any Movie to Open Full Page)</div>', unsafe_allow_html=True)
             if filtered_df.empty:
-                st.warning("No titles matched all of your active filter settings. Open 'Advanced Filtering' above to widen your year, rating, or genre filters.")
+                st.warning("No titles matched all of your active filter settings. Open 'Advanced Filtering' above to widen your year, genre, or rating range.")
             else:
                 rec_cols = st.columns(5)
                 for idx, (_, row) in enumerate(filtered_df.head(10).iterrows()):
@@ -937,8 +916,7 @@ with tab_home:
                             st.markdown(f'<div class="card-sub">{row["year"]} &bull; ★ {row["rating"]} &bull; {row["certification"]}</div>', unsafe_allow_html=True)
 
                             explanation = build_similarity_explanation(ref_info, row)
-
-                            if st.button("📖 Open Full Page", key=f"open_{row['id']}", type="primary", use_container_width=True):
+                            if st.button("🎬 Open Full Page", key=f"open_{row['id']}", type="primary", use_container_width=True):
                                 m_dict = row.to_dict()
                                 m_dict["explanation"] = explanation
                                 m_dict["match_pct"] = match_pct
@@ -966,7 +944,7 @@ with tab_trends:
                 st.markdown(f'<div class="match-pill">🔥 TRENDING #{idx + 1}</div>', unsafe_allow_html=True)
                 st.markdown(f'<div class="card-title">{m_row["title"]}</div>', unsafe_allow_html=True)
                 st.markdown(f'<div class="card-sub">{m_row["year"]} &bull; ★ {m_row["rating"]} &bull; {m_row["certification"]}</div>', unsafe_allow_html=True)
-                if st.button("📖 Open Full Page", key=f"tropen_{m_row['id']}", type="primary", use_container_width=True):
+                if st.button("🎬 Open Full Page", key=f"tropen_{m_row['id']}", type="primary", use_container_width=True):
                     st.session_state.detail_movie = m_row.to_dict()
                     st.rerun()
                 if st.button("➕ My List", key=f"tr_{m_row['id']}", use_container_width=True):
@@ -977,7 +955,6 @@ with tab_trends:
 
     st.markdown('<div class="section-header">Interactive Catalog Visualizations</div>', unsafe_allow_html=True)
     col_a, col_b = st.columns(2)
-
     crave_palette = ["#00A8E8", "#38BDF8", "#0072CE", "#7DD3FC", "#0284C7", "#BAE6FD"]
 
     with col_a:
@@ -1062,9 +1039,9 @@ with tab_compare:
                 st.write(f"**NLP Sentiment Polarity:** `{row_b['polarity']}`")
 
     comp_table = pd.DataFrame({
-        "Attribute": ["Release Year", "TMDB Rating", "Vote Count", "Runtime (mins)", "US Certification", "Box Office Revenue", "NLP Plot Polarity", "Genres", "Director"],
-        row_a["title"]: [str(row_a["year"]), f"{row_a['rating']}/10", f"{row_a['votes']:,}", str(row_a["runtime"]), row_a["certification"], f"${row_a['revenue']:,}", str(row_a["polarity"]), row_a["genres_str"], row_a["director_str"]],
-        row_b["title"]: [str(row_b["year"]), f"{row_b['rating']}/10", f"{row_b['votes']:,}", str(row_b["runtime"]), row_b["certification"], f"${row_b['revenue']:,}", str(row_b["polarity"]), row_b["genres_str"], row_b["director_str"]]
+        "Attribute": ["Release Year", "TMDB Rating", "Vote Count", "Runtime (mins)", "US Certification", "Box Office Revenue", "Plot Sentiment Polarity", "Plot Subjectivity"],
+        row_a["title"]: [str(row_a["year"]), f"{row_a['rating']}/10", f"{row_a['votes']:,}", str(row_a["runtime"]), row_a["certification"], f"${row_a['revenue']:,}", str(row_a["polarity"]), str(row_a["subjectivity"])],
+        row_b["title"]: [str(row_b["year"]), f"{row_b['rating']}/10", f"{row_b['votes']:,}", str(row_b["runtime"]), row_b["certification"], f"${row_b['revenue']:,}", str(row_b["polarity"]), str(row_b["subjectivity"])]
     })
     st.dataframe(comp_table, use_container_width=True, hide_index=True)
 
@@ -1089,7 +1066,7 @@ with tab_watchlist:
                     st.rerun()
 
     if not st.session_state.watchlist:
-        st.info("Your list is currently empty. Click '➕ My List' on any movie card on the Home or Trending tabs to build your personal taste profile!")
+        st.info("Your list is currently empty. Click '➕ My List' on any movie card on the Home or Trending tabs to build your personal taste profile.")
     else:
         wl_cols = st.columns(5)
         for idx, item in enumerate(st.session_state.watchlist):
@@ -1107,11 +1084,9 @@ with tab_watchlist:
         df_all = df_base_catalog.copy()
         watchlist_ids = [w["id"] for w in st.session_state.watchlist]
         combined_profile_text = " ".join([w["combined_features"] for w in st.session_state.watchlist])
-
         vec = TfidfVectorizer(stop_words="english")
         mat = vec.fit_transform(df_all["combined_features"])
         prof_vec = vec.transform([combined_profile_text])
-
         df_all["profile_score"] = cosine_similarity(prof_vec, mat).flatten()
         recs = df_all[~df_all["id"].isin(watchlist_ids)].sort_values(by="profile_score", ascending=False).head(5)
 
