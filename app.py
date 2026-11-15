@@ -271,6 +271,13 @@ st.markdown("""
         margin-top: 12px;
         margin-bottom: 16px;
     }
+    [data-testid="stMetricValue"] {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
+    font-size: 1.35rem !important;
+    line-height: 1.3 !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
