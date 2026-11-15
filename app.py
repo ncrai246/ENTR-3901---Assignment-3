@@ -23,7 +23,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Crave Streaming Platform CSS Overhaul
+# Crave Streaming Platform CSS Overhaul + Circular 'i' Hover Tooltips
 st.markdown("""
 <style>
     /* Hide default Streamlit clutter and enforce Crave Midnight Navy background */
@@ -75,6 +75,81 @@ st.markdown("""
         color: #8AB4F8;
         font-size: 0.9rem;
         font-weight: 500;
+    }
+
+    /* Custom Filter Labels with Circular 'i' Hover Tooltips */
+    .filter-header {
+        font-size: 1.02rem;
+        font-weight: 800;
+        color: #FFFFFF;
+        margin-bottom: 12px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid rgba(0, 168, 232, 0.25);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .filter-label {
+        font-size: 0.86rem;
+        font-weight: 600;
+        color: #F0F6FC;
+        margin-top: 6px;
+        margin-bottom: 4px;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+    }
+    .info-circle {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 17px;
+        height: 17px;
+        border-radius: 50%;
+        background: rgba(0, 168, 232, 0.18);
+        border: 1.5px solid #00A8E8;
+        color: #5CE1E6;
+        font-family: Georgia, serif;
+        font-size: 11px;
+        font-weight: 700;
+        font-style: italic;
+        cursor: pointer;
+        user-select: none;
+        transition: all 0.2s ease;
+    }
+    .info-circle:hover {
+        background: #00A8E8;
+        color: #050A14;
+        box-shadow: 0 0 10px rgba(0, 168, 232, 0.6);
+    }
+    .info-circle .tooltip-box {
+        visibility: hidden;
+        opacity: 0;
+        width: 250px;
+        background: #091528;
+        color: #E2EEF9;
+        text-align: left;
+        font-family: 'Segoe UI', Roboto, Helvetica, sans-serif;
+        font-size: 0.79rem;
+        font-weight: 400;
+        font-style: normal;
+        line-height: 1.45;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid #00A8E8;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.85);
+        position: absolute;
+        z-index: 99999;
+        bottom: 135%;
+        left: 50%;
+        transform: translateX(-50%);
+        transition: opacity 0.18s ease;
+        pointer-events: none;
+    }
+    .info-circle:hover .tooltip-box {
+        visibility: visible;
+        opacity: 1;
     }
 
     /* Cinematic Widescreen Hero Billboard */
@@ -188,12 +263,6 @@ st.markdown("""
         border-left: 4px solid #00A8E8;
         padding-left: 12px;
     }
-    .search-label {
-        font-size: 0.86rem;
-        font-weight: 600;
-        color: #F0F6FC;
-        margin-bottom: 6px;
-    }
     .detail-box {
         background: rgba(11, 23, 42, 0.9);
         border: 1px solid rgba(0, 168, 232, 0.3);
@@ -204,6 +273,19 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+
+def render_label_with_info(label_text, tooltip_text, is_header=False):
+    """Renders a clean label or section header with a circular 'i' hover tooltip."""
+    css_class = "filter-header" if is_header else "filter-label"
+    st.markdown(
+        f'<div class="{css_class}">'
+        f'<span>{label_text}</span>'
+        f'<span class="info-circle" title="{tooltip_text}">i'
+        f'<span class="tooltip-box">{tooltip_text}</span>'
+        f'</span>'
+        f'</div>',
+        unsafe_allow_html=True
+    )
 
 # API Key setup using Streamlit Secrets
 if "TMDB_KEY" in st.secrets:
@@ -347,7 +429,6 @@ def build_candidate_pool(seed_movie_id=None):
 
     df = pd.DataFrame(records)
     if not df.empty:
-        # Sort by popularity & votes so the main theatrical version is kept and knockoffs are dropped
         df = df.sort_values(by=["popularity", "votes"], ascending=False)
         df = df.drop_duplicates(subset=["norm_title"], keep="first").reset_index(drop=True)
     return df
@@ -376,7 +457,6 @@ def live_google_style_autocomplete(searchterm: str):
     if not searchterm:
         return []
 
-    # Strip any formatted suffix like '(2026) | ★ 8.0' if user clicks back into box
     clean_q = searchterm.split("|")[0].split("(")[0].strip()
     if len(clean_q) < 2:
         return []
@@ -384,7 +464,6 @@ def live_google_style_autocomplete(searchterm: str):
     options = []
     seen_title_years = set()
 
-    # 1. Direct live search on TMDB sorted by popularity
     results = search_tmdb_movie(clean_q)
     for m in results[:12]:
         m_id = m.get("id")
@@ -392,16 +471,13 @@ def live_google_style_autocomplete(searchterm: str):
         rel = (m.get("release_date") or "")[:4]
         year_str = rel if rel else "TBA"
         rating = round(m.get("vote_average") or 0.0, 1)
-        votes = m.get("vote_count") or 0
 
-        # Skip obscure zero-vote duplicate entries if we already have the main release for that title & year
         dedup_key = (title.lower(), year_str)
         if m_id and title and dedup_key not in seen_title_years:
             label = f"{title} ({year_str}) | ★ {rating}"
             options.append((label, m_id))
             seen_title_years.add(dedup_key)
 
-    # 2. Fuzzy typo recovery if user misspelled the title
     if len(options) < 3:
         close_matches = difflib.get_close_matches(clean_q, KNOWN_TITLES, n=3, cutoff=0.45)
         for match_title in close_matches:
@@ -503,7 +579,6 @@ def render_full_movie_page(m_data):
                 st.session_state.watchlist.append(m_data)
                 st.toast(f"Added {m_data['title']} to My List!")
 
-    # Widescreen Backdrop Header
     st.markdown(f"""
     <div class="hero-banner" style="background-image: linear-gradient(90deg, #050A14 12%, rgba(5, 10, 20, 0.85) 55%, rgba(5, 10, 20, 0.3) 100%), url('{m_data['backdrop_url']}');">
         <div class="hero-content">
@@ -521,7 +596,6 @@ def render_full_movie_page(m_data):
     </div>
     """, unsafe_allow_html=True)
 
-    # Full Uncut Details Layout
     d_col1, d_col2 = st.columns([1, 2.6])
     with d_col1:
         st.image(m_data["poster_url"], use_container_width=True)
@@ -554,7 +628,7 @@ def render_full_movie_page(m_data):
         m2.metric("Box Office Revenue", f"${m_data['revenue']:,}" if m_data["revenue"] > 0 else "Unreported")
         m3.metric("Production Budget", f"${m_data['budget']:,}" if m_data["budget"] > 0 else "Unreported")
 
-        st.markdown(f"**🎭 Top billed Cast:** {m_data['cast_str']}")
+        st.markdown(f"**🎭 Top Billed Cast:** {m_data['cast_str']}")
         st.markdown(f"**🏷️ Genres:** {m_data['genres_str']}")
         st.markdown(f"**🔑 TMDB Plot Keywords & Themes:** {m_data.get('keywords_str', 'None listed')}")
         st.markdown(f"**⏱️ Runtime:** {m_data['runtime']} minutes &nbsp;|&nbsp; **🔞 US Certification:** {m_data['certification']} &nbsp;|&nbsp; **🌐 Original Language:** {m_data['language']}")
@@ -586,22 +660,29 @@ df_base_catalog = build_candidate_pool(seed_movie_id=None)
 # TAB 1: CRAVE HOME & AI DISCOVERY STREAM
 # ==========================================
 with tab_home:
-    # If the user clicked a movie title at the bottom, show its Full-Page Movie Detail View
     if st.session_state.detail_movie is not None:
         render_full_movie_page(st.session_state.detail_movie)
     else:
         s_col1, s_col2 = st.columns([1, 2.5])
         with s_col1:
+            render_label_with_info(
+                "Discovery Mode",
+                "Choose whether to search for a specific movie title you already know, or type a sentence describing the mood, plot, or vibe you feel like watching."
+            )
             search_mode = st.selectbox(
                 "Discovery Mode",
-                ["Search by Movie Title", "Describe a Plot or Vibe (NLP Query)"]
+                ["Search by Movie Title", "Describe a Plot or Vibe (NLP Query)"],
+                label_visibility="collapsed"
             )
 
         user_nlp_query = ""
         with s_col2:
             if search_mode == "Search by Movie Title":
+                render_label_with_info(
+                    "Search Movies (Live Auto-Complete Dropdown)",
+                    "Start typing any movie title. A live dropdown list will automatically appear below the bar as you type so you can click your movie directly."
+                )
                 if HAS_SEARCHBOX:
-                    st.markdown('<div class="search-label">Search Movies (Live Auto-Complete Dropdown)</div>', unsafe_allow_html=True)
                     picked_result = st_searchbox(
                         live_google_style_autocomplete,
                         placeholder="Start typing any movie title (e.g., The Matrix, The Odyssey, Dune)...",
@@ -613,46 +694,116 @@ with tab_home:
                         elif isinstance(picked_result, int):
                             st.session_state.active_movie_id = picked_result
                 else:
-                    fallback_q = st.text_input("Search Movies", value="The Matrix")
+                    fallback_q = st.text_input("Search Movies", value="The Matrix", label_visibility="collapsed")
                     res = search_tmdb_movie(fallback_q)
                     if res:
                         st.session_state.active_movie_id = res[0]["id"]
             else:
+                render_label_with_info(
+                    "Describe Vibe, Plot, or Themes",
+                    "Type any plain-English description of what you want to watch (like 'a mind-bending space adventure'). The AI will match your words and mood against movie plots."
+                )
                 user_nlp_query = st.text_input(
                     "Describe Vibe, Plot, or Themes",
                     value="A futuristic cyberpunk hacker discovers reality is a simulation",
-                    placeholder="Describe any mood, plot, or theme..."
+                    placeholder="Describe any mood, plot, or theme...",
+                    label_visibility="collapsed"
                 )
 
-        with st.expander("🎛️ Refine Stream: Filters & AI Algorithm Settings (Year, Rating, Runtime, Cast, Genres)", expanded=False):
+        # Renamed Drawer with Circular 'i' Plain-English Tooltips on Every Control
+        with st.expander("🎛️ Advanced Filtering", expanded=False):
             f_col1, f_col2, f_col3 = st.columns(3)
+
             with f_col1:
-                st.markdown("**AI Engine & Temporal Filter**")
+                render_label_with_info(
+                    "AI Engine & Temporal Filter",
+                    "Control how the AI brain ranks recommendations and narrow down movies by when they came out or how long they run.",
+                    is_header=True
+                )
+
+                render_label_with_info(
+                    "Recommendation Algorithm",
+                    "Picks how the AI finds matches: Hybrid blends plot, mood, and viewer ratings; Content-Based matches shared genres, cast, and plot keywords; Sentiment-Based matches the emotional tone (dark vs. uplifting) of the story."
+                )
                 rec_approach = st.selectbox(
                     "Recommendation Algorithm",
                     [
                         "Hybrid (Content + NLP Sentiment + Quality)",
                         "Content-Based Filtering (TF-IDF Attributes)",
                         "Sentiment-Based NLP Matching (Plot Tone)"
-                    ]
+                    ],
+                    label_visibility="collapsed"
                 )
-                year_range = st.slider("Release Year Range", 1970, 2026, (1990, 2026))
-                runtime_range = st.slider("Runtime Bracket (mins)", 40, 240, (60, 220))
+
+                render_label_with_info(
+                    "Release Year Range",
+                    "Only show movies released between these two years. Slide the handles to focus on modern releases or classic films from a specific era."
+                )
+                year_range = st.slider("Release Year Range", 1970, 2026, (1990, 2026), label_visibility="collapsed")
+
+                render_label_with_info(
+                    "Runtime Bracket (mins)",
+                    "Filter movies by their total length in minutes. Great when you want a quick 90-minute movie night or a longer 3-hour epic."
+                )
+                runtime_range = st.slider("Runtime Bracket (mins)", 40, 240, (60, 220), label_visibility="collapsed")
 
             with f_col2:
-                st.markdown("**Quality & Content Specifications**")
-                min_rating = st.slider("Minimum TMDB Rating", 0.0, 10.0, 6.0, 0.5)
-                min_votes = st.number_input("Minimum Vote Count", min_value=0, max_value=10000, value=50, step=50)
+                render_label_with_info(
+                    "Quality & Content Specifications",
+                    "Set quality standards for viewer ratings and filter by age appropriateness or spoken language.",
+                    is_header=True
+                )
+
+                render_label_with_info(
+                    "Minimum TMDB Rating",
+                    "Hides poorly rated movies. Only movies with an average fan score equal to or higher than this number (on a 0 to 10 scale) will appear."
+                )
+                min_rating = st.slider("Minimum TMDB Rating", 0.0, 10.0, 6.0, 0.5, label_visibility="collapsed")
+
+                render_label_with_info(
+                    "Minimum Vote Count",
+                    "Makes sure ratings are trustworthy by requiring a minimum number of viewer reviews. Raising this hides obscure movies that only have a handful of votes."
+                )
+                min_votes = st.number_input("Minimum Vote Count", min_value=0, max_value=10000, value=50, step=50, label_visibility="collapsed")
+
+                render_label_with_info(
+                    "US Certification",
+                    "Filter by official MPAA age rating: G (General Audiences), PG (Parental Guidance), PG-13 (Parents Strongly Cautioned), R (Restricted 17+), or NR (Not Rated)."
+                )
                 all_certs = ["G", "PG", "PG-13", "R", "NR"]
-                selected_certs = st.multiselect("US Certification", all_certs, default=all_certs)
-                selected_lang = st.selectbox("Original Language", ["ALL", "EN", "FR", "ES", "JA", "KO"])
+                selected_certs = st.multiselect("US Certification", all_certs, default=all_certs, label_visibility="collapsed")
+
+                render_label_with_info(
+                    "Original Language",
+                    "Filter movies by the primary language they were originally filmed in (All Languages, English, French, Spanish, Japanese, or Korean)."
+                )
+                selected_lang = st.selectbox("Original Language", ["ALL", "EN", "FR", "ES", "JA", "KO"], label_visibility="collapsed")
 
             with f_col3:
-                st.markdown("**Personnel & Genre Combinations**")
-                personnel_query = st.text_input("Actor or Director Preference", placeholder="e.g., Keanu Reeves, Christopher Nolan")
+                render_label_with_info(
+                    "Personnel & Genre Combinations",
+                    "Search for your favorite actors or directors and combine movie genres.",
+                    is_header=True
+                )
+
+                render_label_with_info(
+                    "Actor or Director Preference",
+                    "Type the name of an actor or director (such as Keanu Reeves or Christopher Nolan) to only show movies they starred in or directed."
+                )
+                personnel_query = st.text_input("Actor or Director Preference", placeholder="e.g., Keanu Reeves, Christopher Nolan", label_visibility="collapsed")
+
+                render_label_with_info(
+                    "Filter by Genres",
+                    "Select one or more movie categories (such as Action, Sci-Fi, or Comedy) to narrow down your recommendations."
+                )
                 genre_options = ["Action", "Adventure", "Animation", "Comedy", "Crime", "Drama", "Family", "Fantasy", "Horror", "Mystery", "Romance", "Science Fiction", "Thriller"]
-                selected_genres = st.multiselect("Filter by Genres", genre_options)
-                genre_operator = st.radio("Genre Logic", ["Match ANY selected genre (OR)", "Match ALL selected genres (AND)"])
+                selected_genres = st.multiselect("Filter by Genres", genre_options, label_visibility="collapsed")
+
+                render_label_with_info(
+                    "Genre Logic",
+                    "Controls how multiple selected genres work together: 'ANY (OR)' shows movies that have at least one of your chosen genres, while 'ALL (AND)' requires a movie to have every single genre you picked at the same time."
+                )
+                genre_operator = st.radio("Genre Logic", ["Match ANY selected genre (OR)", "Match ALL selected genres (AND)"], label_visibility="collapsed")
 
         with st.spinner("Curating your personalized stream..."):
             seed_movie = None
@@ -729,7 +880,7 @@ with tab_home:
 
             st.markdown('<div class="section-header">Recommended For You (Click Any Movie to Open Full Page)</div>', unsafe_allow_html=True)
             if filtered_df.empty:
-                st.warning("No titles matched all of your active filter settings. Open 'Refine Stream' above to widen your year, rating, or genre filters.")
+                st.warning("No titles matched all of your active filter settings. Open 'Advanced Filtering' above to widen your year, rating, or genre filters.")
             else:
                 rec_cols = st.columns(5)
                 for idx, (_, row) in enumerate(filtered_df.head(10).iterrows()):
@@ -743,7 +894,6 @@ with tab_home:
 
                             explanation = build_similarity_explanation(ref_info, row)
 
-                            # Button to open the full-page view for this movie
                             if st.button("📖 Open Full Page", key=f"open_{row['id']}", type="primary", use_container_width=True):
                                 m_dict = row.to_dict()
                                 m_dict["explanation"] = explanation
